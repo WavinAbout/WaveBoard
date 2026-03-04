@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WaveBoard – Collaborative Whiteboard</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --g:   #f3f3f3;
+  --gd:  #808080;
+  --gdd: #404040;
+  --w:   #ffffff;
+  --k:   #000000;
+  --hi:  #1900ff;
+  --hi2: #2c91e4;
+  --inset: inset 1px 1px 0 var(--gdd), inset -1px -1px 0 var(--w);
+  --outset: inset -1px -1px 0 var(--gdd), inset 1px 1px 0 var(--w);
+  --font: 'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, sans-serif;
+}
+html, body {
+  height: 100%; width: 100%;
+  overflow: hidden;
+  background: var(--g);
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--k);
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* ── Window chrome ────────────────────────────────────────────────── */
+.app {
+  display: flex; flex-direction: column;
+  height: 100%; width: 100%;
+  border: 2px solid; border-color: var(--w) var(--gdd) var(--gdd) var(--w);
+}
+/* ── Title bar ────────────────────────────────────────────────────── */
+.titlebar {
+  height: 22px; flex-shrink: 0;
+  background: linear-gradient(90deg, var(--hi) 0%, var(--hi2) 100%);
+  display: flex; align-items: center; padding: 0 3px; gap: 4px;
+}
+.titlebar-icon { font-size: 13px; }
+.titlebar-text { color: #fff; font-weight: bold; font-size: 11px; flex: 1; }
+.titlebar-btn {
+  width: 16px; height: 14px; flex-shrink: 0;
+  background: var(--g); border: 1px solid;
+  border-color: var(--w) var(--gdd) var(--gdd) var(--w);
+  cursor: pointer; font-size: 9px; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+}
+/* ── Menu bar ─────────────────────────────────────────────────────── */
+.menubar {
+  height: 20px; flex-shrink: 0;
+  background: var(--g);
+  border-bottom: 1px solid var(--gdd);
+  display: flex; align-items: stretch; padding: 0 2px;
+}
+.menu-btn {
+  padding: 0 6px; cursor: pointer;
+  display: flex; align-items: center;
+}
+.menu-btn:hover { background: var(--hi); color: #fff; }
+/* ── Room info bar ────────────────────────────────────────────────── */
+.infobar {
+  height: 28px; flex-shrink: 0;
+  background: var(--g);
+  border-bottom: 2px solid; border-bottom-color: var(--gdd);
+  display: flex; align-items: center; gap: 6px; padding: 0 6px;
+  overflow: hidden;
+}
+.infobar-label { color: var(--gdd); }
+.room-code {
+  font-weight: bold; font-size: 12px; letter-spacing: 1px;
+  padding: 1px 6px; background: #fff;
+  box-shadow: var(--inset); cursor: pointer;
+}
+.badge {
+  padding: 0 6px; font-size: 10px; font-weight: bold;
+  border: 1px solid;
+}
+.badge-temp  { background: #ffffa0; color: #604000; border-color: #906000; }
+.badge-perm  { background: #a0ffa0; color: #005000; border-color: #007000; }
+.users {
+  display: flex; align-items: center; gap: 4px;
+  margin-left: auto;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #33cc33; transition: background .3s;
+}
+.dot.off { background: #cc3333; }
+.copy-hint { font-size: 10px; color: var(--gdd); }
+/* ── Main layout ──────────────────────────────────────────────────── */
+.main {
+  display: flex; flex: 1; overflow: hidden;
+}
+/* ── Toolbar ──────────────────────────────────────────────────────── */
+.toolbar {
+  width: 54px; flex-shrink: 0;
+  background: var(--g);
+  border-right: 2px solid var(--gdd);
+  display: flex; flex-direction: column;
+  align-items: center; padding: 4px 2px; gap: 2px;
+  overflow-y: auto; overflow-x: hidden;
+}
+.tool-row { display: flex; gap: 2px; }
+.tool-btn {
+  width: 24px; height: 24px;
+  box-shadow: var(--outset);
+  background: var(--g); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; border: none; transition: none;
+  position: relative;
+}
+.tool-btn:hover { background: #d0d0d0; }
+.tool-btn.active {
+  box-shadow: var(--inset);
+  background: #b8b8b8;
+}
+.sep {
+  width: 48px; height: 0;
+  border-top: 1px solid var(--gdd);
+  border-bottom: 1px solid var(--w);
+  margin: 3px 0;
+}
+/* ── Props panel ──────────────────────────────────────────────────── */
+.props {
+  width: 54px; flex-shrink: 0;
+  background: var(--g);
+  border-left: 2px solid var(--gdd);
+  display: flex; flex-direction: column;
+  align-items: center; padding: 6px 4px; gap: 6px;
+  overflow: hidden;
+}
+.prop-label { font-size: 9px; color: var(--gdd); }
+.size-preview {
+  width: 46px; height: 46px;
+  box-shadow: var(--inset); background: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.size-dot { background: #000; border-radius: 50%; transition: all .1s; }
+input[type=range] {
+  width: 46px; -webkit-appearance: none; appearance: none;
+  height: 14px; background: transparent; cursor: pointer;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 4px; background: #808080;
+  box-shadow: var(--inset);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 18px; margin-top: -7px;
+  background: var(--g); box-shadow: var(--outset);
+}
+input[type=range]::-moz-range-track { height: 4px; background: #808080; }
+input[type=range]::-moz-range-thumb {
+  width: 10px; height: 18px; background: var(--g);
+  border: none; box-shadow: var(--outset);
+}
+.size-val { font-size: 10px; text-align: center; }
+/* ── Canvas area ──────────────────────────────────────────────────── */
+.canvas-wrap {
+  flex: 1; overflow: auto; position: relative;
+  background: var(--gd);
+  background-image:
+    linear-gradient(45deg,#6a6a6a 25%,transparent 25%),
+    linear-gradient(-45deg,#6a6a6a 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#6a6a6a 75%),
+    linear-gradient(-45deg,transparent 75%,#6a6a6a 75%);
+  background-size: 16px 16px;
+  background-position: 0 0,0 8px,8px -8px,-8px 0;
+}
+#canvas {
+  display: block;
+  background: #fff;
+  cursor: crosshair;
+  touch-action: none;
+  box-shadow: 3px 3px 0 #404040, 5px 5px 0 #000;
+  margin: 8px;
+}
+/* ── Palette ──────────────────────────────────────────────────────── */
+.palette {
+  flex-shrink: 0;
+  background: var(--g);
+  border-top: 2px solid var(--gdd);
+  display: flex; align-items: center; gap: 6px; padding: 3px 6px;
+  flex-wrap: wrap;
+}
+.color-display {
+  position: relative; width: 38px; height: 38px; flex-shrink: 0;
+}
+.cd-bg, .cd-fg {
+  position: absolute;
+  width: 27px; height: 27px;
+  box-shadow: var(--inset);
+}
+.cd-bg { bottom: 0; right: 0; z-index: 1; cursor: pointer; }
+.cd-fg { top: 0; left: 0; z-index: 2; cursor: pointer; }
+.cd-fg:hover { outline: 1px solid #fff; }
+.swatches {
+  display: flex; flex-wrap: wrap; gap: 1px;
+  max-width: calc(100% - 120px);
+}
+.swatch {
+  width: 16px; height: 16px;
+  box-shadow: var(--outset);
+  cursor: pointer; transition: transform .05s;
+}
+.swatch:hover { transform: scale(1.15); z-index: 1; position: relative; }
+.swatch:active { box-shadow: var(--inset); }
+.custom-color {
+  width: 16px; height: 16px; display: flex;
+  align-items: center; justify-content: center;
+  box-shadow: var(--outset); cursor: pointer;
+  font-size: 12px; line-height: 1;
+}
+.custom-color:hover { background: #d0d0d0; }
+#colorInput { display: none; }
+/* ── Status bar ───────────────────────────────────────────────────── */
+.statusbar {
+  height: 20px; flex-shrink: 0;
+  background: var(--g);
+  border-top: 1px solid var(--w);
+  display: flex; align-items: center; gap: 2px; padding: 0 4px;
+}
+.status-field {
+  box-shadow: var(--inset);
+  padding: 0 6px; font-size: 10px; height: 16px;
+  display: flex; align-items: center; min-width: 80px;
+}
+/* ── Modal overlay ────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: var(--g);
+  border: 2px solid; border-color: var(--w) var(--gdd) var(--gdd) var(--w);
+  box-shadow: 4px 4px 0 var(--k);
+  min-width: 300px;
+}
+.modal-title {
+  background: linear-gradient(90deg, var(--hi) 0%, var(--hi2) 100%);
+  color: #fff; font-weight: bold; padding: 3px 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.modal-body {
+  padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.modal-body label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
+.modal-body input,
+.modal-body select {
+  box-shadow: var(--inset); border: none; padding: 3px 5px;
+  font-size: 12px; font-family: var(--font); background: #fff;
+  outline: none; width: 100%;
+}
+.modal-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--gdd);
+  display: flex; justify-content: flex-end; gap: 6px;
+}
+.wbtn {
+  padding: 3px 16px; background: var(--g);
+  box-shadow: var(--outset); border: none;
+  font-family: var(--font); font-size: 11px; cursor: pointer;
+}
+.wbtn:hover { background: #d0d0d0; }
+.wbtn:active { box-shadow: var(--inset); }
+.wbtn.default { font-weight: bold; }
+/* ── Tooltip ──────────────────────────────────────────────────────── */
+.tool-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 110%; top: 50%; transform: translateY(-50%);
+  background: #ffffaa; color: #000; border: 1px solid #808080;
+  padding: 2px 5px; font-size: 10px; white-space: nowrap;
+  pointer-events: none; opacity: 0; transition: opacity .15s;
+  z-index: 100;
+}
+.tool-btn[data-tip]:hover::after { opacity: 1; }
+/* ── Notification toast ───────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: var(--hi); color: #fff; padding: 4px 14px;
+  font-size: 11px; border: 1px solid var(--hi2); z-index: 300;
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 550px) {
+  .props { display: none; }
+  .toolbar { width: 38px; }
+  .tool-btn { width: 30px; height: 30px; font-size: 16px; }
+  .toolbar { width: 38px; }
+  .copy-hint { display: none; }
+  .infobar-label { display: none; }
+  .menubar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Room setup modal ──────────────────────────────────────────────────── -->
+<div class="overlay" id="setupModal">
+  <div class="modal">
+    <div class="modal-title">
+      🌊 WaveBoard
+      <span style="font-weight:normal;font-size:10px">Goyim Collaboration </span>
+    </div>
+    <div class="modal-body">
+      <label>
+        Room Code <span style="color:#808080">(leave blank to create new)</span>
+        <input id="roomInput" placeholder="e.g. ABC123" maxlength="24" autocomplete="off" spellcheck="false">
+      </label>
+      <label>
+        Board Mode
+        <select id="modeSelect">
+          <option value="temp">Temporary — auto-clears after a set time</option>
+          <option value="perm">Permanent — persists until manually cleared</option>
+        </select>
+      </label>
+      <label id="ttlRow">
+        Auto-clear after (minutes)
+        <input id="ttlInput" type="number" value="30" min="1" max="1440">
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="wbtn default" id="joinBtn">Join / Create Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main app ──────────────────────────────────────────────────────────── -->
+<div class="app" id="appShell" style="display:none">
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <span class="titlebar-icon">🌊</span>
+    <span class="titlebar-text">WaveBoard</span>
+    <div class="titlebar-btn" title="Minimize">_</div>
+    <div class="titlebar-btn" title="Maximize">□</div>
+    <div class="titlebar-btn" title="Close">✕</div>
+  </div>
+
+  <!-- Menu bar -->
+  <div class="menubar">
+    <div class="menu-btn">File</div>
+    <div class="menu-btn">Edit</div>
+    <div class="menu-btn">View</div>
+    <div class="menu-btn" id="menuHelp">Help</div>
+  </div>
+
+  <!-- Room info bar -->
+  <div class="infobar">
+    <span class="infobar-label">Room:</span>
+    <div class="room-code" id="roomCode" title="Click to copy share link">------</div>
+    <span class="badge badge-temp" id="modeBadge">TEMP</span>
+    <span class="copy-hint" id="copyHint">Click code to copy link</span>
+    <div class="users">
+      <div class="dot off" id="connDot"></div>
+      <span id="userCount">0 users</span>
+    </div>
+  </div>
+
+  <!-- Main area: toolbar + canvas + props -->
+  <div class="main">
+
+    <!-- Left toolbar -->
+    <div class="toolbar">
+      <div class="tool-row">
+        <div class="tool-btn active" id="btnPencil"  data-tool="pencil"  data-tip="Pencil">✏️</div>
+        <div class="tool-btn"        id="btnEraser"  data-tool="eraser"  data-tip="Eraser">🧹</div>
+      </div>
+      <div class="sep"></div>
+      <div class="tool-btn" id="btnClear" data-tip="Clear board" style="font-size:12px">🗑️</div>
+      <div class="sep"></div>
+      <!-- Brush size presets -->
+      <div class="tool-row">
+        <div class="tool-btn" data-size="2"  data-tip="Fine">
+          <div style="width:2px;height:2px;border-radius:50%;background:#000"></div>
+        </div>
+        <div class="tool-btn" data-size="6"  data-tip="Small">
+          <div style="width:6px;height:6px;border-radius:50%;background:#000"></div>
+        </div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-btn" data-size="12" data-tip="Medium">
+          <div style="width:12px;height:12px;border-radius:50%;background:#000"></div>
+        </div>
+        <div class="tool-btn" data-size="24" data-tip="Large">
+          <div style="width:20px;height:20px;border-radius:50%;background:#000"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas area -->
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Right props panel -->
+    <div class="props">
+      <div class="prop-label">Size</div>
+      <div class="size-preview">
+        <div class="size-dot" id="sizeDot"></div>
+      </div>
+      <input type="range" id="sizeSlider" min="1" max="60" value="4">
+      <div class="size-val" id="sizeVal">4px</div>
+    </div>
+
+  </div><!-- .main -->
+
+  <!-- Palette bar -->
+  <div class="palette">
+    <div class="color-display">
+      <div class="cd-bg" id="bgSwatch" title="Background (not used)"></div>
+      <div class="cd-fg" id="fgSwatch" title="Foreground color — click to pick"></div>
+    </div>
+    <div class="swatches" id="swatches"></div>
+    <div class="custom-color" id="customColorBtn" title="Custom color…">⊕</div>
+    <input type="color" id="colorInput">
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div class="status-field" id="statusPos">x=0, y=0</div>
+    <div class="status-field" id="statusTool">Pencil</div>
+    <div class="status-field" id="statusInfo">Ready</div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   WaveBoard — Client
+   Multiplayer syncing approach:
+   1. During drawing: emit `segment` events (x0,y0 → x1,y1) for live preview
+      on remote canvases. These are rate-limited and NOT persisted.
+   2. On stroke end: emit a `stroke` event with all points for the completed
+      stroke. Server persists these and sends them to new joiners (init packet).
+   3. Segment events give instant "drawing in real time" feel even at high
+      latency since each event is tiny (2 coords + meta).
+   4. Completed strokes ensure correctness — no antialiasing drift.
+   5. Each remote user's live segments are drawn to the main canvas directly
+      (they are overwritten by the completed stroke broadcast on mouseup).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// ── Palette colors ────────────────────────────────────────────────────────
+const PALETTE = [
+  '#000000','#7f7f7f','#880015','#ed1c24','#ff7f27','#fff200',
+  '#22b14c','#00a2e8','#3f48cc','#a349a4',
+  '#ffffff','#c3c3c3','#b97a57','#ffaec9','#ffc90e','#efe4b0',
+  '#b5e61d','#99d9ea','#7092be','#c8bfe7',
+];
+
+// ── State ─────────────────────────────────────────────────────────────────
+let ws = null;
+let roomId = null;
+let myColor = '#000000';
+let brushSize = 4;
+let tool = 'pencil'; // 'pencil' | 'eraser'
+let drawing = false;
+let lastX = 0, lastY = 0;
+let currentPoints = [];
+let segmentThrottle = null;
+const SEGMENT_INTERVAL = 14; // ~70fps cap for segments sent over wire
+
+// Remote peers' live cursors/segments
+const remoteActive = {}; // clientId → {x, y, color, size, tool}
+
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const canvas    = document.getElementById('canvas');
+const ctx       = canvas.getContext('2d');
+const fgSwatch  = document.getElementById('fgSwatch');
+const bgSwatch  = document.getElementById('bgSwatch');
+const sizeSlider= document.getElementById('sizeSlider');
+const sizeVal   = document.getElementById('sizeVal');
+const sizeDot   = document.getElementById('sizeDot');
+const roomCodeEl= document.getElementById('roomCode');
+const modeBadge = document.getElementById('modeBadge');
+const connDot   = document.getElementById('connDot');
+const userCount = document.getElementById('userCount');
+const statusPos = document.getElementById('statusPos');
+const statusTool= document.getElementById('statusTool');
+const statusInfo= document.getElementById('statusInfo');
+const toast     = document.getElementById('toast');
+
+// ── Canvas sizing ─────────────────────────────────────────────────────────
+function resizeCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  const W = Math.max(wrap.clientWidth  - 24, 300);
+  const H = Math.max(wrap.clientHeight - 24, 200);
+  // Preserve content when resizing
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  tmp.getContext('2d').drawImage(canvas, 0, 0);
+  canvas.width = W; canvas.height = H;
+  ctx.drawImage(tmp, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ── Palette setup ─────────────────────────────────────────────────────────
+function buildPalette() {
+  const container = document.getElementById('swatches');
+  PALETTE.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    el.style.background = c;
+    el.title = c;
+    el.addEventListener('click', () => setColor(c));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); setBgColor(c); });
+    container.appendChild(el);
+  });
+}
+function setColor(c) {
+  myColor = c;
+  fgSwatch.style.background = c;
+}
+function setBgColor(c) {
+  bgSwatch.style.background = c;
+}
+setColor('#000000');
+bgSwatch.style.background = '#ffffff';
+
+// Custom color picker
+document.getElementById('customColorBtn').addEventListener('click', () => {
+  document.getElementById('colorInput').click();
+});
+document.getElementById('colorInput').addEventListener('input', e => {
+  setColor(e.target.value);
+});
+
+// ── Size controls ─────────────────────────────────────────────────────────
+function setSize(n) {
+  brushSize = Math.min(Math.max(parseInt(n), 1), 100);
+  sizeSlider.value = Math.min(brushSize, 60);
+  sizeVal.textContent = brushSize + 'px';
+  const d = Math.min(brushSize, 40);
+  sizeDot.style.width = d + 'px';
+  sizeDot.style.height = d + 'px';
+}
+sizeSlider.addEventListener('input', e => setSize(e.target.value));
+setSize(4);
+
+// Size preset buttons
+document.querySelectorAll('[data-size]').forEach(btn => {
+  btn.addEventListener('click', () => setSize(btn.dataset.size));
+});
+
+// ── Tool buttons ──────────────────────────────────────────────────────────
+function setTool(t) {
+  tool = t;
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(b => {
+    b.classList.toggle('active', b.dataset.tool === t);
+  });
+  canvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
+  statusTool.textContent = t === 'eraser' ? 'Eraser' : 'Pencil';
+}
+document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+  btn.addEventListener('click', () => setTool(btn.dataset.tool));
+});
+document.getElementById('btnClear').addEventListener('click', () => {
+  if (confirm('Clear the board for everyone?')) sendClear();
+});
+
+// ── Drawing helpers ───────────────────────────────────────────────────────
+function drawSegment(context, x0, y0, x1, y1, color, size, drawTool) {
+  context.save();
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.lineWidth = size;
+  if (drawTool === 'eraser') {
+    context.globalCompositeOperation = 'destination-out';
+    context.strokeStyle = 'rgba(0,0,0,1)';
+  } else {
+    context.globalCompositeOperation = 'source-over';
+    context.strokeStyle = color;
+  }
+  context.beginPath();
+  context.moveTo(x0, y0);
+  context.lineTo(x1, y1);
+  context.stroke();
+  context.restore();
+}
+
+function drawFullStroke(context, stroke) {
+  if (!stroke.points || stroke.points.length < 1) return;
+  context.save();
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.lineWidth = stroke.size;
+  if (stroke.tool === 'eraser') {
+    context.globalCompositeOperation = 'destination-out';
+    context.strokeStyle = 'rgba(0,0,0,1)';
+  } else {
+    context.globalCompositeOperation = 'source-over';
+    context.strokeStyle = stroke.color;
+  }
+  context.beginPath();
+  context.moveTo(stroke.points[0].x, stroke.points[0].y);
+  for (let i = 1; i < stroke.points.length; i++) {
+    context.lineTo(stroke.points[i].x, stroke.points[i].y);
+  }
+  if (stroke.points.length === 1) {
+    // Single dot
+    context.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
+    context.fill();
+  } else {
+    context.stroke();
+  }
+  context.restore();
+}
+
+// ── Pointer event handling ────────────────────────────────────────────────
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left),
+    y: (src.clientY - rect.top),
+  };
+}
+
+function onPointerDown(e) {
+  e.preventDefault();
+  drawing = true;
+  const { x, y } = getPos(e);
+  lastX = x; lastY = y;
+  currentPoints = [{ x, y }];
+  // Draw a dot on press
+  drawSegment(ctx, x, y, x, y, myColor, brushSize, tool);
+}
+
+function onPointerMove(e) {
+  e.preventDefault();
+  const { x, y } = getPos(e);
+  statusPos.textContent = `x=${Math.round(x)}, y=${Math.round(y)}`;
+
+  if (!drawing) return;
+
+  drawSegment(ctx, lastX, lastY, x, y, myColor, brushSize, tool);
+  currentPoints.push({ x, y });
+
+  // Throttle segment broadcasts
+  if (!segmentThrottle) {
+    segmentThrottle = setTimeout(() => {
+      segmentThrottle = null;
+      sendSegment(lastX, lastY, x, y);
+    }, SEGMENT_INTERVAL);
+  }
+
+  lastX = x; lastY = y;
+}
+
+function onPointerUp(e) {
+  if (!drawing) return;
+  drawing = false;
+  if (segmentThrottle) { clearTimeout(segmentThrottle); segmentThrottle = null; }
+
+  // Send complete stroke for persistence
+  sendStroke(currentPoints);
+  currentPoints = [];
+}
+
+// Mouse
+canvas.addEventListener('mousedown',  onPointerDown);
+canvas.addEventListener('mousemove',  onPointerMove);
+canvas.addEventListener('mouseup',    onPointerUp);
+canvas.addEventListener('mouseleave', onPointerUp);
+
+// Touch
+canvas.addEventListener('touchstart',  onPointerDown, { passive: false });
+canvas.addEventListener('touchmove',   onPointerMove, { passive: false });
+canvas.addEventListener('touchend',    onPointerUp,   { passive: false });
+canvas.addEventListener('touchcancel', onPointerUp,   { passive: false });
+
+// ── WebSocket messaging ───────────────────────────────────────────────────
+function sendSegment(x0, y0, x1, y1) {
+  send({ type: 'segment', x0, y0, x1, y1, color: myColor, size: brushSize, tool });
+}
+function sendStroke(points) {
+  if (!points.length) return;
+  send({ type: 'stroke', points, color: myColor, size: brushSize, tool });
+}
+function sendClear() {
+  send({ type: 'clear' });
+}
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
+}
+
+// ── WebSocket connection ──────────────────────────────────────────────────
+function connect(rid, mode, tempMinutes) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.addEventListener('open', () => {
+    connDot.classList.remove('off');
+    statusInfo.textContent = 'Connected';
+    ws.send(JSON.stringify({ type: 'join', roomId: rid, mode, tempMinutes }));
+  });
+
+  ws.addEventListener('message', ({ data }) => {
+    let msg;
+    try { msg = JSON.parse(data); } catch { return; }
+    handleMessage(msg);
+  });
+
+  ws.addEventListener('close', () => {
+    connDot.classList.add('off');
+    statusInfo.textContent = 'Disconnected — reconnecting…';
+    setTimeout(() => connect(roomId, mode, tempMinutes), 2000);
+  });
+
+  ws.addEventListener('error', () => {
+    // close event will fire and trigger reconnect
+  });
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+
+    case 'init': {
+      roomId = msg.roomId;
+      roomCodeEl.textContent = msg.roomId;
+      // Update URL without reload
+      const url = new URL(location.href);
+      url.searchParams.set('room', msg.roomId);
+      history.replaceState({}, '', url);
+      // Badge
+      if (msg.mode === 'perm') {
+        modeBadge.textContent = 'PERMANENT';
+        modeBadge.className = 'badge badge-perm';
+      } else {
+        modeBadge.textContent = `TEMP ${msg.tempMinutes}min`;
+        modeBadge.className = 'badge badge-temp';
+      }
+      // Replay all stored strokes
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      (msg.strokes || []).forEach(s => drawFullStroke(ctx, s));
+      updateUserCount(msg.userCount);
+      statusInfo.textContent = `Joined room ${msg.roomId}`;
+      break;
+    }
+
+    case 'segment': {
+      // Another user is actively drawing — render their segment live
+      drawSegment(ctx, msg.x0, msg.y0, msg.x1, msg.y1, msg.color, msg.size, msg.tool);
+      break;
+    }
+
+    case 'stroke': {
+      // Another user finished a stroke — draw it cleanly
+      drawFullStroke(ctx, msg.stroke);
+      break;
+    }
+
+    case 'clear': {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (msg.reason === 'timer') {
+        showToast('⏰ Board auto-cleared (time limit reached)');
+      } else {
+        showToast('🗑️ Board cleared');
+      }
+      break;
+    }
+
+    case 'userCount': {
+      updateUserCount(msg.count);
+      break;
+    }
+  }
+}
+
+function updateUserCount(n) {
+  userCount.textContent = n + (n === 1 ? ' user' : ' users');
+}
+
+// ── Room setup ────────────────────────────────────────────────────────────
+const setupModal = document.getElementById('setupModal');
+const appShell   = document.getElementById('appShell');
+const roomInput  = document.getElementById('roomInput');
+const modeSelect = document.getElementById('modeSelect');
+const ttlRow     = document.getElementById('ttlRow');
+const ttlInput   = document.getElementById('ttlInput');
+
+// Pre-fill room code from URL
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) roomInput.value = urlRoom;
+
+modeSelect.addEventListener('change', () => {
+  ttlRow.style.display = modeSelect.value === 'temp' ? 'flex' : 'none';
+});
+
+document.getElementById('joinBtn').addEventListener('click', startSession);
+document.getElementById('roomInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startSession();
+});
+
+function startSession() {
+  const rid  = roomInput.value.trim() || '';
+  const mode = modeSelect.value;
+  const ttl  = parseInt(ttlInput.value) || 30;
+
+  setupModal.style.display = 'none';
+  appShell.style.display = 'flex';
+
+  // Size canvas to fit after app is visible
+  resizeCanvas();
+  buildPalette();
+
+  connect(rid, mode, ttl);
+}
+
+// ── Room code: click to copy share link ──────────────────────────────────
+roomCodeEl.addEventListener('click', () => {
+  const url = new URL(location.href);
+  url.searchParams.set('room', roomId || '');
+  navigator.clipboard.writeText(url.toString()).then(() => {
+    showToast('📋 Share link copied to clipboard!');
+  }).catch(() => {
+    prompt('Share this link:', url.toString());
+  });
+});
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'p' || e.key === 'P') setTool('pencil');
+  if (e.key === 'e' || e.key === 'E') setTool('eraser');
+  if (e.key === '[') setSize(Math.max(1, brushSize - 2));
+  if (e.key === ']') setSize(Math.min(100, brushSize + 2));
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// ── Foreground swatch: click to open color picker ─────────────────────────
+fgSwatch.addEventListener('click', () => {
+  document.getElementById('colorInput').value = myColor;
+  document.getElementById('colorInput').click();
+});
+</script>
+</body>
+</html>
