@@ -2,855 +2,1544 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>WaveBoard – Collaborative Whiteboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>CollaBoard</title>
 <style>
-/* ── Reset & Base ─────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --g:   #f3f3f3;
-  --gd:  #808080;
-  --gdd: #404040;
-  --w:   #ffffff;
-  --k:   #000000;
-  --hi:  #1900ff;
-  --hi2: #2c91e4;
-  --inset: inset 1px 1px 0 var(--gdd), inset -1px -1px 0 var(--w);
-  --outset: inset -1px -1px 0 var(--gdd), inset 1px 1px 0 var(--w);
-  --font: 'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, sans-serif;
+/* ── Reset ───────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:       #1a1a1a;
+  --panel:    #252525;
+  --panel2:   #2e2e2e;
+  --border:   #3c3c3c;
+  --hover:    #353535;
+  --active:   #0057c2;
+  --active2:  #1a6de0;
+  --text:     #d4d4d4;
+  --text2:    #888;
+  --accent:   #4a9eff;
+  --danger:   #e05050;
+  --green:    #4caf6e;
+  --yellow:   #e0b84a;
+  --r:        4px;
+  --tool-w:   40px;
 }
-html, body {
-  height: 100%; width: 100%;
-  overflow: hidden;
-  background: var(--g);
-  font-family: var(--font);
-  font-size: 15px;
-  color: var(--k);
-  user-select: none;
-  -webkit-user-select: none;
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;user-select:none;-webkit-user-select:none}
+button{all:unset;cursor:pointer}
+
+/* ── Layout ──────────────────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100vh;width:100vw}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+#topbar{
+  height:36px;flex-shrink:0;background:var(--panel);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;padding:0 10px;z-index:50
 }
-/* ── Window chrome ────────────────────────────────────────────────── */
-.app {
-  display: flex; flex-direction: column;
-  height: 100%; width: 100%;
-  border: 2px solid; border-color: var(--w) var(--gdd) var(--gdd) var(--w);
+#logo{font-weight:700;font-size:14px;color:var(--accent);letter-spacing:-.3px;margin-right:6px}
+.tbtn{
+  padding:3px 10px;border-radius:var(--r);font-size:12px;color:var(--text);
+  transition:background .12s
 }
-/* ── Title bar ────────────────────────────────────────────────────── */
-.titlebar {
-  height: 22px; flex-shrink: 0;
-  background: linear-gradient(90deg, var(--hi) 0%, var(--hi2) 100%);
-  display: flex; align-items: center; padding: 0 3px; gap: 4px;
+.tbtn:hover{background:var(--hover)}
+.tbtn.danger:hover{background:#4a1a1a;color:var(--danger)}
+#topRight{display:flex;align-items:center;gap:10px;margin-left:auto}
+#roomPill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:20px;padding:3px 12px;cursor:pointer;transition:border-color .15s
 }
-.titlebar-icon { font-size: 13px; }
-.titlebar-text { color: #fff; font-weight: bold; font-size: 11px; flex: 1; }
-.titlebar-btn {
-  width: 16px; height: 14px; flex-shrink: 0;
-  background: var(--g); border: 1px solid;
-  border-color: var(--w) var(--gdd) var(--gdd) var(--w);
-  cursor: pointer; font-size: 9px; font-weight: bold;
-  display: flex; align-items: center; justify-content: center;
+#roomPill:hover{border-color:var(--accent)}
+#roomCode{font-weight:700;font-size:13px;letter-spacing:1px;color:var(--accent)}
+.modeBadge{font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600}
+.badge-temp{background:#3a3000;color:var(--yellow)}
+.badge-perm{background:#0a2a0a;color:var(--green)}
+#connDot{width:7px;height:7px;border-radius:50%;background:#e05050;transition:background .3s;flex-shrink:0}
+#connDot.on{background:var(--green)}
+#userCount{font-size:11px;color:var(--text2)}
+.zoom-ctrl{display:flex;align-items:center;gap:4px}
+.zoom-ctrl button{
+  width:22px;height:22px;border-radius:var(--r);
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:14px;display:flex;align-items:center;justify-content:center;
+  transition:background .12s
 }
-/* ── Menu bar ─────────────────────────────────────────────────────── */
-.menubar {
-  height: 20px; flex-shrink: 0;
-  background: var(--g);
-  border-bottom: 1px solid var(--gdd);
-  display: flex; align-items: stretch; padding: 0 2px;
+.zoom-ctrl button:hover{background:var(--hover)}
+#zoomLabel{min-width:44px;text-align:center;font-size:12px;color:var(--text2)}
+
+/* ── Workspace ───────────────────────────────────────────────────────── */
+#workspace{flex:1;display:flex;overflow:hidden;position:relative}
+
+/* ── Tool panel ──────────────────────────────────────────────────────── */
+#toolbox{
+  width:50px;flex-shrink:0;background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;
+  padding:6px 0;gap:1px;overflow-y:auto;overflow-x:hidden;z-index:20
 }
-.menu-btn {
-  padding: 0 6px; cursor: pointer;
-  display: flex; align-items: center;
+.toolGroup{
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;padding:2px 0;gap:1px
 }
-.menu-btn:hover { background: var(--hi); color: #fff; }
-/* ── Room info bar ────────────────────────────────────────────────── */
-.infobar {
-  height: 28px; flex-shrink: 0;
-  background: var(--g);
-  border-bottom: 2px solid; border-bottom-color: var(--gdd);
-  display: flex; align-items: center; gap: 6px; padding: 0 6px;
-  overflow: hidden;
+.toolSep{width:32px;height:1px;background:var(--border);margin:4px 0}
+.toolBtn{
+  width:38px;height:38px;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;position:relative;transition:background .1s;
+  color:var(--text2)
 }
-.infobar-label { color: var(--gdd); }
-.room-code {
-  font-weight: bold; font-size: 12px; letter-spacing: 1px;
-  padding: 1px 6px; background: #fff;
-  box-shadow: var(--inset); cursor: pointer;
+.toolBtn:hover{background:var(--hover);color:var(--text)}
+.toolBtn.active{background:var(--active);color:#fff}
+.toolBtn.active:hover{background:var(--active2)}
+.toolBtn .kb{
+  position:absolute;bottom:2px;right:4px;
+  font-size:8px;color:var(--text2);font-family:monospace;line-height:1
 }
-.badge {
-  padding: 0 6px; font-size: 10px; font-weight: bold;
-  border: 1px solid;
-}
-.badge-temp  { background: #ffffa0; color: #604000; border-color: #906000; }
-.badge-perm  { background: #a0ffa0; color: #005000; border-color: #007000; }
-.users {
-  display: flex; align-items: center; gap: 4px;
-  margin-left: auto;
-}
-.dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #33cc33; transition: background .3s;
-}
-.dot.off { background: #cc3333; }
-.copy-hint { font-size: 10px; color: var(--gdd); }
-/* ── Main layout ──────────────────────────────────────────────────── */
-.main {
-  display: flex; flex: 1; overflow: hidden;
-}
-/* ── Toolbar ──────────────────────────────────────────────────────── */
-.toolbar {
-  width: 54px; flex-shrink: 0;
-  background: var(--g);
-  border-right: 2px solid var(--gdd);
-  display: flex; flex-direction: column;
-  align-items: center; padding: 4px 2px; gap: 2px;
-  overflow-y: auto; overflow-x: hidden;
-}
-.tool-row { display: flex; gap: 2px; }
-.tool-btn {
-  width: 24px; height: 24px;
-  box-shadow: var(--outset);
-  background: var(--g); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; border: none; transition: none;
-  position: relative;
-}
-.tool-btn:hover { background: #d0d0d0; }
-.tool-btn.active {
-  box-shadow: var(--inset);
-  background: #b8b8b8;
-}
-.sep {
-  width: 48px; height: 0;
-  border-top: 1px solid var(--gdd);
-  border-bottom: 1px solid var(--w);
-  margin: 3px 0;
-}
-/* ── Props panel ──────────────────────────────────────────────────── */
-.props {
-  width: 54px; flex-shrink: 0;
-  background: var(--g);
-  border-left: 2px solid var(--gdd);
-  display: flex; flex-direction: column;
-  align-items: center; padding: 6px 4px; gap: 6px;
-  overflow: hidden;
-}
-.prop-label { font-size: 9px; color: var(--gdd); }
-.size-preview {
-  width: 46px; height: 46px;
-  box-shadow: var(--inset); background: #fff;
-  display: flex; align-items: center; justify-content: center;
-}
-.size-dot { background: #000; border-radius: 50%; transition: all .1s; }
-input[type=range] {
-  width: 46px; -webkit-appearance: none; appearance: none;
-  height: 14px; background: transparent; cursor: pointer;
-}
-input[type=range]::-webkit-slider-runnable-track {
-  height: 4px; background: #808080;
-  box-shadow: var(--inset);
-}
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 10px; height: 18px; margin-top: -7px;
-  background: var(--g); box-shadow: var(--outset);
-}
-input[type=range]::-moz-range-track { height: 4px; background: #808080; }
-input[type=range]::-moz-range-thumb {
-  width: 10px; height: 18px; background: var(--g);
-  border: none; box-shadow: var(--outset);
-}
-.size-val { font-size: 10px; text-align: center; }
-/* ── Canvas area ──────────────────────────────────────────────────── */
-.canvas-wrap {
-  flex: 1; overflow: auto; position: relative;
-  background: var(--gd);
+.toolBtn.active .kb{color:rgba(255,255,255,.6)}
+
+/* ── Canvas viewport ─────────────────────────────────────────────────── */
+#viewport{
+  flex:1;overflow:hidden;position:relative;
+  background:#111;
   background-image:
-    linear-gradient(45deg,#6a6a6a 25%,transparent 25%),
-    linear-gradient(-45deg,#6a6a6a 25%,transparent 25%),
-    linear-gradient(45deg,transparent 75%,#6a6a6a 75%),
-    linear-gradient(-45deg,transparent 75%,#6a6a6a 75%);
-  background-size: 16px 16px;
-  background-position: 0 0,0 8px,8px -8px,-8px 0;
+    linear-gradient(45deg,#1e1e1e 25%,transparent 25%),
+    linear-gradient(-45deg,#1e1e1e 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#1e1e1e 75%),
+    linear-gradient(-45deg,transparent 75%,#1e1e1e 75%);
+  background-size:20px 20px;
+  background-position:0 0,0 10px,10px -10px,-10px 0
 }
-#canvas {
-  display: block;
-  background: #fff;
-  cursor: crosshair;
-  touch-action: none;
-  box-shadow: 3px 3px 0 #404040, 5px 5px 0 #000;
-  margin: 8px;
+#canvasWrap{
+  position:absolute;top:0;left:0;
+  transform-origin:0 0;
+  will-change:transform
 }
-/* ── Palette ──────────────────────────────────────────────────────── */
-.palette {
-  flex-shrink: 0;
-  background: var(--g);
-  border-top: 2px solid var(--gdd);
-  display: flex; align-items: center; gap: 6px; padding: 3px 6px;
-  flex-wrap: wrap;
+#mainCanvas{display:block;cursor:crosshair;touch-action:none;image-rendering:pixelated}
+#overlayCanvas{
+  display:block;position:absolute;top:0;left:0;
+  cursor:crosshair;touch-action:none;pointer-events:none;
+  image-rendering:pixelated
 }
-.color-display {
-  position: relative; width: 38px; height: 38px; flex-shrink: 0;
+#overlayCanvas.interactive{pointer-events:all}
+
+/* ── Side panel ──────────────────────────────────────────────────────── */
+#sidePanel{
+  width:200px;flex-shrink:0;background:var(--panel);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;z-index:20
 }
-.cd-bg, .cd-fg {
-  position: absolute;
-  width: 27px; height: 27px;
-  box-shadow: var(--inset);
+.panelSection{border-bottom:1px solid var(--border);padding:10px}
+.panelTitle{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--text2);margin-bottom:8px
 }
-.cd-bg { bottom: 0; right: 0; z-index: 1; cursor: pointer; }
-.cd-fg { top: 0; left: 0; z-index: 2; cursor: pointer; }
-.cd-fg:hover { outline: 1px solid #fff; }
-.swatches {
-  display: flex; flex-wrap: wrap; gap: 1px;
-  max-width: calc(100% - 120px);
+/* Color picker */
+#colorDisplay{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.colorSwatch{
+  width:36px;height:36px;border-radius:var(--r);
+  border:2px solid var(--border);cursor:pointer;
+  transition:border-color .15s;flex-shrink:0
 }
-.swatch {
-  width: 16px; height: 16px;
-  box-shadow: var(--outset);
-  cursor: pointer; transition: transform .05s;
+.colorSwatch:hover{border-color:var(--accent)}
+.colorSwatch.fg{position:relative;z-index:2}
+.colorSwatch.bg{position:relative;margin-left:-14px;margin-top:10px;z-index:1;opacity:.8}
+#hexInput{
+  flex:1;background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:12px;padding:4px 6px;
+  border-radius:var(--r);outline:none;font-family:monospace
 }
-.swatch:hover { transform: scale(1.15); z-index: 1; position: relative; }
-.swatch:active { box-shadow: var(--inset); }
-.custom-color {
-  width: 16px; height: 16px; display: flex;
-  align-items: center; justify-content: center;
-  box-shadow: var(--outset); cursor: pointer;
-  font-size: 12px; line-height: 1;
+#hexInput:focus{border-color:var(--accent)}
+.sliderRow{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.sliderRow label{font-size:10px;color:var(--text2);display:flex;justify-content:space-between}
+.sliderRow label span{color:var(--text)}
+input[type=range]{
+  width:100%;-webkit-appearance:none;appearance:none;
+  height:4px;border-radius:2px;background:var(--border);
+  cursor:pointer;outline:none
 }
-.custom-color:hover { background: #d0d0d0; }
-#colorInput { display: none; }
-/* ── Status bar ───────────────────────────────────────────────────── */
-.statusbar {
-  height: 20px; flex-shrink: 0;
-  background: var(--g);
-  border-top: 1px solid var(--w);
-  display: flex; align-items: center; gap: 2px; padding: 0 4px;
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--accent);cursor:pointer;border:2px solid var(--panel)
 }
-.status-field {
-  box-shadow: var(--inset);
-  padding: 0 6px; font-size: 10px; height: 16px;
-  display: flex; align-items: center; min-width: 80px;
+input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);cursor:pointer;border:2px solid var(--panel)
 }
-/* ── Modal overlay ────────────────────────────────────────────────── */
-.overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.5);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 200;
+/* Swatches */
+#swatchGrid{
+  display:grid;grid-template-columns:repeat(8,1fr);gap:3px
 }
-.modal {
-  background: var(--g);
-  border: 2px solid; border-color: var(--w) var(--gdd) var(--gdd) var(--w);
-  box-shadow: 4px 4px 0 var(--k);
-  min-width: 300px;
+.sw{
+  aspect-ratio:1;border-radius:3px;cursor:pointer;
+  transition:transform .1s,box-shadow .1s;border:1px solid transparent
 }
-.modal-title {
-  background: linear-gradient(90deg, var(--hi) 0%, var(--hi2) 100%);
-  color: #fff; font-weight: bold; padding: 3px 6px;
-  display: flex; justify-content: space-between; align-items: center;
+.sw:hover{transform:scale(1.2);z-index:1;position:relative}
+/* Shape options */
+.optRow{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px}
+.optRow label{flex:1;color:var(--text2)}
+.checkBtn{
+  width:16px;height:16px;border-radius:3px;
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-size:10px;background:var(--panel2);cursor:pointer;transition:background .12s
 }
-.modal-body {
-  padding: 14px; display: flex; flex-direction: column; gap: 10px;
+.checkBtn.on{background:var(--active);border-color:var(--active2);color:#fff}
+/* Undo/redo */
+.btnRow{display:flex;gap:6px}
+.panelBtn{
+  flex:1;padding:5px;border-radius:var(--r);
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:11px;text-align:center;
+  transition:background .12s,border-color .12s
 }
-.modal-body label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
-.modal-body input,
-.modal-body select {
-  box-shadow: var(--inset); border: none; padding: 3px 5px;
-  font-size: 12px; font-family: var(--font); background: #fff;
-  outline: none; width: 100%;
+.panelBtn:hover{background:var(--hover);border-color:var(--accent)}
+.panelBtn:active{background:var(--border)}
+.panelBtn.red:hover{background:#3a1010;border-color:var(--danger);color:var(--danger)}
+/* Upload */
+#uploadBtn{
+  width:100%;padding:7px;border-radius:var(--r);
+  background:var(--panel2);border:1px dashed var(--border);
+  color:var(--text2);font-size:11px;text-align:center;
+  cursor:pointer;transition:all .15s;margin-bottom:6px
 }
-.modal-footer {
-  padding: 8px 14px;
-  border-top: 1px solid var(--gdd);
-  display: flex; justify-content: flex-end; gap: 6px;
+#uploadBtn:hover{border-color:var(--accent);color:var(--accent);background:var(--hover)}
+/* Selection info */
+#selInfo{font-size:10px;color:var(--text2);min-height:16px}
+
+/* ── Bottom status bar ───────────────────────────────────────────────── */
+#statusbar{
+  height:22px;flex-shrink:0;background:var(--panel);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:2px;padding:0 8px;z-index:50
 }
-.wbtn {
-  padding: 3px 16px; background: var(--g);
-  box-shadow: var(--outset); border: none;
-  font-family: var(--font); font-size: 11px; cursor: pointer;
+.sf{padding:0 8px;font-size:10px;color:var(--text2);border-right:1px solid var(--border);height:100%;display:flex;align-items:center}
+
+/* ── Global tooltip ──────────────────────────────────────────────────── */
+#tooltip{
+  position:fixed;z-index:99999;
+  background:#2a2a2a;border:1px solid var(--border);
+  color:var(--text);font-size:11px;padding:4px 8px;border-radius:4px;
+  pointer-events:none;display:none;white-space:nowrap;
+  box-shadow:0 4px 12px rgba(0,0,0,.6)
 }
-.wbtn:hover { background: #d0d0d0; }
-.wbtn:active { box-shadow: var(--inset); }
-.wbtn.default { font-weight: bold; }
-/* ── Tooltip ──────────────────────────────────────────────────────── */
-.tool-btn[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute; left: 110%; top: 50%; transform: translateY(-50%);
-  background: #ffffaa; color: #000; border: 1px solid #808080;
-  padding: 2px 5px; font-size: 10px; white-space: nowrap;
-  pointer-events: none; opacity: 0; transition: opacity .15s;
-  z-index: 100;
+
+/* ── Modals ──────────────────────────────────────────────────────────── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;z-index:1000
 }
-.tool-btn[data-tip]:hover::after { opacity: 1; }
-/* ── Notification toast ───────────────────────────────────────────── */
-.toast {
-  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-  background: var(--hi); color: #fff; padding: 4px 14px;
-  font-size: 11px; border: 1px solid var(--hi2); z-index: 300;
-  opacity: 0; transition: opacity .2s; pointer-events: none;
+.modal{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;min-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8);
+  overflow:hidden
 }
-.toast.show { opacity: 1; }
-/* ── Mobile ───────────────────────────────────────────────────────── */
-@media (max-width: 550px) {
-  .props { display: none; }
-  .toolbar { width: 38px; }
-  .tool-btn { width: 30px; height: 30px; font-size: 16px; }
-  .toolbar { width: 38px; }
-  .copy-hint { display: none; }
-  .infobar-label { display: none; }
-  .menubar { display: none; }
+.modalHead{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between
+}
+.modalHead h2{font-size:14px;font-weight:600}
+.modalHead span{font-size:11px;color:var(--text2)}
+.modalBody{padding:16px;display:flex;flex-direction:column;gap:12px}
+.frow{display:flex;flex-direction:column;gap:4px}
+.frow label{font-size:11px;color:var(--text2)}
+.finput{
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:12px;padding:6px 10px;
+  border-radius:var(--r);outline:none;font-family:inherit;width:100%
+}
+.finput:focus{border-color:var(--accent)}
+.fselect{
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:12px;padding:5px 8px;
+  border-radius:var(--r);outline:none;cursor:pointer;width:100%
+}
+.modalFoot{
+  padding:12px 16px;border-top:1px solid var(--border);
+  display:flex;justify-content:flex-end;gap:8px
+}
+.mBtn{
+  padding:6px 20px;border-radius:var(--r);font-size:12px;
+  transition:background .12s
+}
+.mBtn.primary{background:var(--active);color:#fff}
+.mBtn.primary:hover{background:var(--active2)}
+.mBtn.ghost{color:var(--text2);border:1px solid var(--border)}
+.mBtn.ghost:hover{background:var(--hover)}
+
+/* ── Text input overlay ──────────────────────────────────────────────── */
+#textInputWrap{
+  position:absolute;z-index:500;display:none;pointer-events:all
+}
+#textInputEl{
+  background:transparent;border:none;outline:none;
+  color:inherit;font:inherit;resize:none;min-width:60px;min-height:24px;
+  white-space:pre;overflow:hidden;caret-color:#fff;
+  padding:2px;border-bottom:1px dashed rgba(255,255,255,.4)
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  padding:6px 16px;border-radius:20px;font-size:12px;
+  z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;
+  box-shadow:0 4px 16px rgba(0,0,0,.5)
+}
+#toast.show{opacity:1}
+
+/* ── Drag-over highlight ─────────────────────────────────────────────── */
+#viewport.dragover::after{
+  content:'Drop image here';
+  position:absolute;inset:0;background:rgba(74,159,255,.12);
+  border:2px dashed var(--accent);display:flex;align-items:center;justify-content:center;
+  font-size:24px;color:var(--accent);border-radius:4px;pointer-events:none;
+  display:flex;align-items:center;justify-content:center
+}
+
+/* ── Selection marquee (CSS animation for marching ants) ─────────────── */
+@keyframes march{to{stroke-dashoffset:-20}}
+#selSvg{
+  position:absolute;top:0;left:0;pointer-events:none;
+  z-index:100;overflow:visible
+}
+#selRect{
+  fill:none;stroke:#fff;stroke-width:1.5;
+  stroke-dasharray:6 4;animation:march 1s linear infinite;
+  vector-effect:non-scaling-stroke
+}
+#selRect2{fill:none;stroke:#000;stroke-width:1.5;stroke-dasharray:6 4;stroke-dashoffset:10;animation:march 1s linear infinite;vector-effect:non-scaling-stroke}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media(max-width:600px){
+  #sidePanel{display:none}
+  #topbar .tbtn:not(#clearBtn){display:none}
 }
 </style>
 </head>
 <body>
 
-<!-- ── Room setup modal ──────────────────────────────────────────────────── -->
-<div class="overlay" id="setupModal">
+<!-- ── Join modal ─────────────────────────────────────────────────────────── -->
+<div class="overlay" id="joinModal">
   <div class="modal">
-    <div class="modal-title">
-      🌊 WaveBoard
-      <span style="font-weight:normal;font-size:10px">Goyim Collaboration </span>
+    <div class="modalHead">
+      <h2>🎨 CollaBoard</h2>
+      <span>Real-time collaborative whiteboard</span>
     </div>
-    <div class="modal-body">
-      <label>
-        Room Code <span style="color:#808080">(leave blank to create new)</span>
-        <input id="roomInput" placeholder="e.g. ABC123" maxlength="24" autocomplete="off" spellcheck="false">
-      </label>
-      <label>
-        Board Mode
-        <select id="modeSelect">
-          <option value="temp">Temporary — auto-clears after a set time</option>
+    <div class="modalBody">
+      <div class="frow">
+        <label>Room Code <span style="color:var(--text2)">(leave blank to create new)</span></label>
+        <input class="finput" id="roomInput" placeholder="e.g. ABC123" maxlength="24" autocomplete="off">
+      </div>
+      <div class="frow">
+        <label>Canvas Size</label>
+        <select class="fselect" id="sizeSelect">
+          <option value="1920,1080">1920 × 1080 (HD)</option>
+          <option value="2560,1440" selected>2560 × 1440 (QHD)</option>
+          <option value="3840,2160">3840 × 2160 (4K)</option>
+        </select>
+      </div>
+      <div class="frow">
+        <label>Board Mode</label>
+        <select class="fselect" id="modeSelect">
+          <option value="temp">Temporary — auto-clears after time limit</option>
           <option value="perm">Permanent — persists until manually cleared</option>
         </select>
-      </label>
-      <label id="ttlRow">
-        Auto-clear after (minutes)
-        <input id="ttlInput" type="number" value="30" min="1" max="1440">
-      </label>
+      </div>
+      <div class="frow" id="ttlRow">
+        <label>Auto-clear after (minutes)</label>
+        <input class="finput" id="ttlInput" type="number" value="60" min="1" max="1440">
+      </div>
     </div>
-    <div class="modal-footer">
-      <button class="wbtn default" id="joinBtn">Join / Create Room</button>
+    <div class="modalFoot">
+      <button class="mBtn primary" id="joinBtn">Join / Create Room</button>
     </div>
   </div>
 </div>
 
-<!-- ── Main app ──────────────────────────────────────────────────────────── -->
-<div class="app" id="appShell" style="display:none">
+<!-- ── App shell ──────────────────────────────────────────────────────────── -->
+<div id="app" style="display:none">
 
-  <!-- Title bar -->
-  <div class="titlebar">
-    <span class="titlebar-icon">🌊</span>
-    <span class="titlebar-text">WaveBoard</span>
-    <div class="titlebar-btn" title="Minimize">_</div>
-    <div class="titlebar-btn" title="Maximize">□</div>
-    <div class="titlebar-btn" title="Close">✕</div>
-  </div>
-
-  <!-- Menu bar -->
-  <div class="menubar">
-    <div class="menu-btn">File</div>
-    <div class="menu-btn">Edit</div>
-    <div class="menu-btn">View</div>
-    <div class="menu-btn" id="menuHelp">Help</div>
-  </div>
-
-  <!-- Room info bar -->
-  <div class="infobar">
-    <span class="infobar-label">Room:</span>
-    <div class="room-code" id="roomCode" title="Click to copy share link">------</div>
-    <span class="badge badge-temp" id="modeBadge">TEMP</span>
-    <span class="copy-hint" id="copyHint">Click code to copy link</span>
-    <div class="users">
-      <div class="dot off" id="connDot"></div>
+  <!-- Top bar -->
+  <div id="topbar">
+    <span id="logo">CollaBoard</span>
+    <button class="tbtn" id="undoTopBtn" title="Undo">↩ Undo</button>
+    <button class="tbtn" id="redoTopBtn" title="Redo">↪ Redo</button>
+    <button class="tbtn danger" id="clearBtn">🗑 Clear</button>
+    <div id="topRight">
+      <div class="zoom-ctrl">
+        <button id="zoomOut" title="Zoom out (-)">−</button>
+        <span id="zoomLabel">100%</span>
+        <button id="zoomIn" title="Zoom in (+)">+</button>
+        <button id="zoomFit" title="Fit to screen" style="width:auto;padding:0 6px;font-size:11px">Fit</button>
+      </div>
+      <div id="roomPill" title="Click to copy share link">
+        <div id="connDot"></div>
+        <span id="roomCode">------</span>
+        <span class="modeBadge badge-temp" id="modeBadge">TEMP</span>
+      </div>
       <span id="userCount">0 users</span>
     </div>
   </div>
 
-  <!-- Main area: toolbar + canvas + props -->
-  <div class="main">
+  <!-- Workspace -->
+  <div id="workspace">
 
-    <!-- Left toolbar -->
-    <div class="toolbar">
-      <div class="tool-row">
-        <div class="tool-btn active" id="btnPencil"  data-tool="pencil"  data-tip="Pencil">✏️</div>
-        <div class="tool-btn"        id="btnEraser"  data-tool="eraser"  data-tip="Eraser">🧹</div>
+    <!-- Tool panel -->
+    <div id="toolbox">
+      <!-- Select / Move -->
+      <div class="toolGroup">
+        <button class="toolBtn" data-tool="select" data-tip="Select (M)">⬚<span class="kb">M</span></button>
+        <button class="toolBtn" data-tool="move"   data-tip="Move (V)">✥<span class="kb">V</span></button>
       </div>
-      <div class="sep"></div>
-      <div class="tool-btn" id="btnClear" data-tip="Clear board" style="font-size:12px">🗑️</div>
-      <div class="sep"></div>
-      <!-- Brush size presets -->
-      <div class="tool-row">
-        <div class="tool-btn" data-size="2"  data-tip="Fine">
-          <div style="width:2px;height:2px;border-radius:50%;background:#000"></div>
-        </div>
-        <div class="tool-btn" data-size="6"  data-tip="Small">
-          <div style="width:6px;height:6px;border-radius:50%;background:#000"></div>
-        </div>
+      <div class="toolSep"></div>
+      <!-- Drawing -->
+      <div class="toolGroup">
+        <button class="toolBtn active" data-tool="pencil" data-tip="Pencil (B)">✏️<span class="kb">B</span></button>
+        <button class="toolBtn" data-tool="brush"  data-tip="Soft Brush (N)">🖌<span class="kb">N</span></button>
+        <button class="toolBtn" data-tool="eraser" data-tip="Eraser (E)">◻<span class="kb">E</span></button>
+        <button class="toolBtn" data-tool="fill"   data-tip="Fill Bucket (G)">🪣<span class="kb">G</span></button>
       </div>
-      <div class="tool-row">
-        <div class="tool-btn" data-size="12" data-tip="Medium">
-          <div style="width:12px;height:12px;border-radius:50%;background:#000"></div>
-        </div>
-        <div class="tool-btn" data-size="24" data-tip="Large">
-          <div style="width:20px;height:20px;border-radius:50%;background:#000"></div>
+      <div class="toolSep"></div>
+      <!-- Shapes -->
+      <div class="toolGroup">
+        <button class="toolBtn" data-tool="line"    data-tip="Line (L)">╱<span class="kb">L</span></button>
+        <button class="toolBtn" data-tool="arrow"   data-tip="Arrow (A)">↗<span class="kb">A</span></button>
+        <button class="toolBtn" data-tool="rect"    data-tip="Rectangle (R)">▭<span class="kb">R</span></button>
+        <button class="toolBtn" data-tool="ellipse" data-tip="Ellipse (O)">◯<span class="kb">O</span></button>
+      </div>
+      <div class="toolSep"></div>
+      <!-- Utils -->
+      <div class="toolGroup">
+        <button class="toolBtn" data-tool="text"       data-tip="Text (T)">T<span class="kb">T</span></button>
+        <button class="toolBtn" data-tool="eyedropper" data-tip="Eyedropper (I)">💧<span class="kb">I</span></button>
+        <button class="toolBtn" data-tool="hand"       data-tip="Hand / Pan (H)">🤚<span class="kb">H</span></button>
+        <button class="toolBtn" data-tool="zoom"       data-tip="Zoom (Z)">🔍<span class="kb">Z</span></button>
+      </div>
+    </div>
+
+    <!-- Canvas viewport -->
+    <div id="viewport">
+      <div id="canvasWrap">
+        <canvas id="mainCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+        <!-- Selection marquee SVG -->
+        <svg id="selSvg" width="0" height="0" style="display:none">
+          <rect id="selRect2"/><rect id="selRect"/>
+        </svg>
+        <!-- Text input overlay -->
+        <div id="textInputWrap">
+          <textarea id="textInputEl" rows="1" spellcheck="false"></textarea>
         </div>
       </div>
     </div>
 
-    <!-- Canvas area -->
-    <div class="canvas-wrap" id="canvasWrap">
-      <canvas id="canvas"></canvas>
-    </div>
-
-    <!-- Right props panel -->
-    <div class="props">
-      <div class="prop-label">Size</div>
-      <div class="size-preview">
-        <div class="size-dot" id="sizeDot"></div>
+    <!-- Side panel -->
+    <div id="sidePanel">
+      <!-- Color -->
+      <div class="panelSection">
+        <div class="panelTitle">Color</div>
+        <div id="colorDisplay">
+          <div class="colorSwatch fg" id="fgSwatch" title="Foreground color"></div>
+          <div class="colorSwatch bg" id="bgSwatch" title="Background color"></div>
+          <input id="hexInput" maxlength="9" placeholder="#ffffff" spellcheck="false">
+        </div>
+        <div class="sliderRow">
+          <label>Opacity <span id="opacityVal">100%</span></label>
+          <input type="range" id="opacitySlider" min="1" max="100" value="100">
+        </div>
       </div>
-      <input type="range" id="sizeSlider" min="1" max="60" value="4">
-      <div class="size-val" id="sizeVal">4px</div>
+      <!-- Brush -->
+      <div class="panelSection">
+        <div class="panelTitle">Brush</div>
+        <div class="sliderRow">
+          <label>Size <span id="sizeVal">4px</span></label>
+          <input type="range" id="sizeSlider" min="1" max="200" value="4">
+        </div>
+        <div class="sliderRow" id="hardnessRow">
+          <label>Hardness <span id="hardnessVal">100%</span></label>
+          <input type="range" id="hardnessSlider" min="0" max="100" value="100">
+        </div>
+        <div class="sliderRow" id="toleranceRow" style="display:none">
+          <label>Tolerance <span id="toleranceVal">30</span></label>
+          <input type="range" id="toleranceSlider" min="0" max="255" value="30">
+        </div>
+      </div>
+      <!-- Shape options (shown when shape tool active) -->
+      <div class="panelSection" id="shapeOpts" style="display:none">
+        <div class="panelTitle">Shape</div>
+        <div class="optRow">
+          <label>Filled</label>
+          <div class="checkBtn" id="filledBtn">✓</div>
+        </div>
+        <div class="optRow" id="fillColorRow" style="display:none">
+          <label>Fill Color</label>
+          <div class="colorSwatch" id="fillSwatch" style="width:24px;height:24px"></div>
+        </div>
+      </div>
+      <!-- Selection -->
+      <div class="panelSection" id="selSection" style="display:none">
+        <div class="panelTitle">Selection</div>
+        <div id="selInfo">None</div>
+        <div class="btnRow" style="margin-top:6px">
+          <button class="panelBtn" id="cropBtn">Crop</button>
+          <button class="panelBtn" id="copyBtn">Copy</button>
+        </div>
+        <div class="btnRow" style="margin-top:4px">
+          <button class="panelBtn red" id="deleteSelBtn">Delete</button>
+          <button class="panelBtn" id="deselBtn">Deselect</button>
+        </div>
+      </div>
+      <!-- Palette -->
+      <div class="panelSection">
+        <div class="panelTitle">Swatches</div>
+        <div id="swatchGrid"></div>
+      </div>
+      <!-- Actions -->
+      <div class="panelSection">
+        <div class="panelTitle">Canvas</div>
+        <div id="uploadBtn">📁 Upload Image</div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+        <div class="btnRow">
+          <button class="panelBtn" id="undoBtn">↩ Undo</button>
+          <button class="panelBtn" id="redoBtn">↪ Redo</button>
+        </div>
+        <div class="btnRow" style="margin-top:4px">
+          <button class="panelBtn" id="saveBtn">💾 Save PNG</button>
+          <button class="panelBtn red" id="clearSideBtn">🗑 Clear</button>
+        </div>
+      </div>
     </div>
 
-  </div><!-- .main -->
-
-  <!-- Palette bar -->
-  <div class="palette">
-    <div class="color-display">
-      <div class="cd-bg" id="bgSwatch" title="Background (not used)"></div>
-      <div class="cd-fg" id="fgSwatch" title="Foreground color — click to pick"></div>
-    </div>
-    <div class="swatches" id="swatches"></div>
-    <div class="custom-color" id="customColorBtn" title="Custom color…">⊕</div>
-    <input type="color" id="colorInput">
-  </div>
+  </div><!-- workspace -->
 
   <!-- Status bar -->
-  <div class="statusbar">
-    <div class="status-field" id="statusPos">x=0, y=0</div>
-    <div class="status-field" id="statusTool">Pencil</div>
-    <div class="status-field" id="statusInfo">Ready</div>
+  <div id="statusbar">
+    <span class="sf" id="sfPos">x=0, y=0</span>
+    <span class="sf" id="sfTool">Pencil</span>
+    <span class="sf" id="sfInfo">Ready</span>
+    <span class="sf" id="sfCanvas">2560×1440</span>
   </div>
 
-</div><!-- .app -->
+</div><!-- app -->
 
-<!-- Toast notification -->
-<div class="toast" id="toast"></div>
+<!-- Global tooltip -->
+<div id="tooltip"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Hidden color input -->
+<input type="color" id="colorInput" style="display:none">
+<input type="color" id="bgColorInput" style="display:none">
+<input type="color" id="fillColorInput" style="display:none">
 
 <script>
-/* ═══════════════════════════════════════════════════════════════════════════
-   WaveBoard — Client
-   Multiplayer syncing approach:
-   1. During drawing: emit `segment` events (x0,y0 → x1,y1) for live preview
-      on remote canvases. These are rate-limited and NOT persisted.
-   2. On stroke end: emit a `stroke` event with all points for the completed
-      stroke. Server persists these and sends them to new joiners (init packet).
-   3. Segment events give instant "drawing in real time" feel even at high
-      latency since each event is tiny (2 coords + meta).
-   4. Completed strokes ensure correctness — no antialiasing drift.
-   5. Each remote user's live segments are drawn to the main canvas directly
-      (they are overwritten by the completed stroke broadcast on mouseup).
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════════
+   CollaBoard v2 — Client
+   ════════════════════════════════════════════════════════════════════════════ */
 
-// ── Palette colors ────────────────────────────────────────────────────────
-const PALETTE = [
-  '#000000','#7f7f7f','#880015','#ed1c24','#ff7f27','#fff200',
-  '#22b14c','#00a2e8','#3f48cc','#a349a4',
-  '#ffffff','#c3c3c3','#b97a57','#ffaec9','#ffc90e','#efe4b0',
-  '#b5e61d','#99d9ea','#7092be','#c8bfe7',
+// ── Constants ─────────────────────────────────────────────────────────────────
+const PALETTES = [
+  '#000000','#1a1a1a','#434343','#666666','#999999','#b7b7b7','#cccccc','#ffffff',
+  '#ff0000','#ff4500','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff',
+  '#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6fa8dc','#8e7cc3','#c27ba0',
+  '#cc0000','#e69138','#f1c232','#6aa84f','#45818e','#3d85c8','#674ea7','#a64d79',
 ];
 
-// ── State ─────────────────────────────────────────────────────────────────
-let ws = null;
-let roomId = null;
-let myColor = '#000000';
-let brushSize = 4;
-let tool = 'pencil'; // 'pencil' | 'eraser'
-let drawing = false;
-let lastX = 0, lastY = 0;
-let currentPoints = [];
-let segmentThrottle = null;
-const SEGMENT_INTERVAL = 14; // ~70fps cap for segments sent over wire
+const SHORTCUTS = {
+  b:'pencil', n:'brush', e:'eraser', g:'fill',
+  l:'line', a:'arrow', r:'rect', o:'ellipse',
+  t:'text', i:'eyedropper', h:'hand', z:'zoom',
+  v:'move', m:'select',
+};
 
-// Remote peers' live cursors/segments
-const remoteActive = {}; // clientId → {x, y, color, size, tool}
+// ── App State ─────────────────────────────────────────────────────────────────
+let CANVAS_W = 2560, CANVAS_H = 1440;
+let ws = null, roomId = null;
+const S = {
+  tool: 'pencil',
+  color: '#000000',
+  bgColor: '#ffffff',
+  fillColor: '#ff0000',
+  brushSize: 4,
+  opacity: 1,
+  hardness: 1,
+  tolerance: 30,
+  shapeFilled: false,
+  zoom: 1,
+  panX: 0, panY: 0,
+  isDrawing: false,
+  isPanning: false,
+  spaceDown: false,
+  lastX: 0, lastY: 0,
+  currentPoints: [],
+  shapeStart: null,
+  selection: null,       // {x,y,w,h}
+  selectionData: null,   // ImageData
+  selDragStart: null,
+  textActive: false,
+  undoStack: [], redoStack: [],
+  segTimer: null,
+};
+const MAX_UNDO = 40;
 
-// ── DOM refs ──────────────────────────────────────────────────────────────
-const canvas    = document.getElementById('canvas');
-const ctx       = canvas.getContext('2d');
-const fgSwatch  = document.getElementById('fgSwatch');
-const bgSwatch  = document.getElementById('bgSwatch');
-const sizeSlider= document.getElementById('sizeSlider');
-const sizeVal   = document.getElementById('sizeVal');
-const sizeDot   = document.getElementById('sizeDot');
-const roomCodeEl= document.getElementById('roomCode');
-const modeBadge = document.getElementById('modeBadge');
-const connDot   = document.getElementById('connDot');
-const userCount = document.getElementById('userCount');
-const statusPos = document.getElementById('statusPos');
-const statusTool= document.getElementById('statusTool');
-const statusInfo= document.getElementById('statusInfo');
-const toast     = document.getElementById('toast');
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const mainCanvas    = document.getElementById('mainCanvas');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const ctx           = mainCanvas.getContext('2d');
+const octx          = overlayCanvas.getContext('2d');
+const viewport      = document.getElementById('viewport');
+const canvasWrap    = document.getElementById('canvasWrap');
+const selSvg        = document.getElementById('selSvg');
+const selRect       = document.getElementById('selRect');
+const selRect2      = document.getElementById('selRect2');
+const fgSwatch      = document.getElementById('fgSwatch');
+const bgSwatch      = document.getElementById('bgSwatch');
+const fillSwatch    = document.getElementById('fillSwatch');
+const hexInput      = document.getElementById('hexInput');
+const sizeSlider    = document.getElementById('sizeSlider');
+const sizeVal       = document.getElementById('sizeVal');
+const opacitySlider = document.getElementById('opacitySlider');
+const opacityVal    = document.getElementById('opacityVal');
+const hardSlider    = document.getElementById('hardnessSlider');
+const hardVal       = document.getElementById('hardnessVal');
+const tolSlider     = document.getElementById('toleranceSlider');
+const tolVal        = document.getElementById('toleranceVal');
+const selInfo       = document.getElementById('selInfo');
+const textInputWrap = document.getElementById('textInputWrap');
+const textInputEl   = document.getElementById('textInputEl');
+const sfPos         = document.getElementById('sfPos');
+const sfTool        = document.getElementById('sfTool');
+const sfInfo        = document.getElementById('sfInfo');
+const sfCanvas      = document.getElementById('sfCanvas');
+const zoomLabel     = document.getElementById('zoomLabel');
+const toast         = document.getElementById('toast');
+const tooltip       = document.getElementById('tooltip');
 
-// ── Canvas sizing ─────────────────────────────────────────────────────────
-function resizeCanvas() {
-  const wrap = document.getElementById('canvasWrap');
-  const W = Math.max(wrap.clientWidth  - 24, 300);
-  const H = Math.max(wrap.clientHeight - 24, 200);
-  // Preserve content when resizing
-  const tmp = document.createElement('canvas');
-  tmp.width = canvas.width; tmp.height = canvas.height;
-  tmp.getContext('2d').drawImage(canvas, 0, 0);
-  canvas.width = W; canvas.height = H;
-  ctx.drawImage(tmp, 0, 0);
-}
-window.addEventListener('resize', resizeCanvas);
-
-// ── Palette setup ─────────────────────────────────────────────────────────
-function buildPalette() {
-  const container = document.getElementById('swatches');
-  PALETTE.forEach(c => {
-    const el = document.createElement('div');
-    el.className = 'swatch';
-    el.style.background = c;
-    el.title = c;
-    el.addEventListener('click', () => setColor(c));
-    el.addEventListener('contextmenu', e => { e.preventDefault(); setBgColor(c); });
-    container.appendChild(el);
-  });
-}
-function setColor(c) {
-  myColor = c;
-  fgSwatch.style.background = c;
-}
-function setBgColor(c) {
-  bgSwatch.style.background = c;
-}
-setColor('#000000');
-bgSwatch.style.background = '#ffffff';
-
-// Custom color picker
-document.getElementById('customColorBtn').addEventListener('click', () => {
-  document.getElementById('colorInput').click();
-});
-document.getElementById('colorInput').addEventListener('input', e => {
-  setColor(e.target.value);
-});
-
-// ── Size controls ─────────────────────────────────────────────────────────
-function setSize(n) {
-  brushSize = Math.min(Math.max(parseInt(n), 1), 100);
-  sizeSlider.value = Math.min(brushSize, 60);
-  sizeVal.textContent = brushSize + 'px';
-  const d = Math.min(brushSize, 40);
-  sizeDot.style.width = d + 'px';
-  sizeDot.style.height = d + 'px';
-}
-sizeSlider.addEventListener('input', e => setSize(e.target.value));
-setSize(4);
-
-// Size preset buttons
-document.querySelectorAll('[data-size]').forEach(btn => {
-  btn.addEventListener('click', () => setSize(btn.dataset.size));
-});
-
-// ── Tool buttons ──────────────────────────────────────────────────────────
-function setTool(t) {
-  tool = t;
-  document.querySelectorAll('.tool-btn[data-tool]').forEach(b => {
-    b.classList.toggle('active', b.dataset.tool === t);
-  });
-  canvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
-  statusTool.textContent = t === 'eraser' ? 'Eraser' : 'Pencil';
-}
-document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
-  btn.addEventListener('click', () => setTool(btn.dataset.tool));
-});
-document.getElementById('btnClear').addEventListener('click', () => {
-  if (confirm('Clear the board for everyone?')) sendClear();
-});
-
-// ── Drawing helpers ───────────────────────────────────────────────────────
-function drawSegment(context, x0, y0, x1, y1, color, size, drawTool) {
-  context.save();
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-  context.lineWidth = size;
-  if (drawTool === 'eraser') {
-    context.globalCompositeOperation = 'destination-out';
-    context.strokeStyle = 'rgba(0,0,0,1)';
-  } else {
-    context.globalCompositeOperation = 'source-over';
-    context.strokeStyle = color;
-  }
-  context.beginPath();
-  context.moveTo(x0, y0);
-  context.lineTo(x1, y1);
-  context.stroke();
-  context.restore();
+// ── Canvas Setup ──────────────────────────────────────────────────────────────
+function initCanvas(w, h) {
+  CANVAS_W = w; CANVAS_H = h;
+  mainCanvas.width = w; mainCanvas.height = h;
+  overlayCanvas.width = w; overlayCanvas.height = h;
+  selSvg.setAttribute('width', w); selSvg.setAttribute('height', h);
+  sfCanvas.textContent = `${w}×${h}`;
+  // White background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
 }
 
-function drawFullStroke(context, stroke) {
-  if (!stroke.points || stroke.points.length < 1) return;
-  context.save();
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-  context.lineWidth = stroke.size;
-  if (stroke.tool === 'eraser') {
-    context.globalCompositeOperation = 'destination-out';
-    context.strokeStyle = 'rgba(0,0,0,1)';
-  } else {
-    context.globalCompositeOperation = 'source-over';
-    context.strokeStyle = stroke.color;
-  }
-  context.beginPath();
-  context.moveTo(stroke.points[0].x, stroke.points[0].y);
-  for (let i = 1; i < stroke.points.length; i++) {
-    context.lineTo(stroke.points[i].x, stroke.points[i].y);
-  }
-  if (stroke.points.length === 1) {
-    // Single dot
-    context.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
-    context.fill();
-  } else {
-    context.stroke();
-  }
-  context.restore();
-}
-
-// ── Pointer event handling ────────────────────────────────────────────────
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  const src = e.touches ? e.touches[0] : e;
+// ── Coordinate Transform ──────────────────────────────────────────────────────
+function getCanvasPos(e) {
+  const src  = e.touches ? e.touches[0] : e;
+  const rect = viewport.getBoundingClientRect();
   return {
-    x: (src.clientX - rect.left),
-    y: (src.clientY - rect.top),
+    x: (src.clientX - rect.left - S.panX) / S.zoom,
+    y: (src.clientY - rect.top  - S.panY) / S.zoom,
   };
 }
 
+function updateTransform() {
+  canvasWrap.style.transform = `translate(${S.panX}px,${S.panY}px) scale(${S.zoom})`;
+  zoomLabel.textContent = Math.round(S.zoom * 100) + '%';
+}
+
+function fitToScreen() {
+  const vw = viewport.clientWidth, vh = viewport.clientHeight;
+  S.zoom = Math.min((vw - 40) / CANVAS_W, (vh - 40) / CANVAS_H, 1);
+  S.panX = (vw - CANVAS_W * S.zoom) / 2;
+  S.panY = (vh - CANVAS_H * S.zoom) / 2;
+  updateTransform();
+}
+
+function zoomAt(delta, cx, cy) {
+  const factor = delta > 0 ? 1.12 : 1 / 1.12;
+  const newZ   = Math.min(Math.max(S.zoom * factor, 0.03), 32);
+  S.panX = cx - (cx - S.panX) * (newZ / S.zoom);
+  S.panY = cy - (cy - S.panY) * (newZ / S.zoom);
+  S.zoom = newZ;
+  updateTransform();
+}
+
+// ── Undo / Redo ───────────────────────────────────────────────────────────────
+function saveUndo() {
+  S.undoStack.push(ctx.getImageData(0, 0, CANVAS_W, CANVAS_H));
+  if (S.undoStack.length > MAX_UNDO) S.undoStack.shift();
+  S.redoStack = [];
+}
+function undo() {
+  if (!S.undoStack.length) return;
+  S.redoStack.push(ctx.getImageData(0, 0, CANVAS_W, CANVAS_H));
+  ctx.putImageData(S.undoStack.pop(), 0, 0);
+  showToast('Undo');
+}
+function redo() {
+  if (!S.redoStack.length) return;
+  S.undoStack.push(ctx.getImageData(0, 0, CANVAS_W, CANVAS_H));
+  ctx.putImageData(S.redoStack.pop(), 0, 0);
+  showToast('Redo');
+}
+
+// ── Drawing Primitives ────────────────────────────────────────────────────────
+function applyStyle(c, color, size, opacity, tool, isEraser) {
+  c.save();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.lineWidth = size;
+  c.globalAlpha = opacity;
+  if (tool === 'eraser' || isEraser) {
+    c.globalCompositeOperation = 'destination-out';
+    c.strokeStyle = 'rgba(0,0,0,1)';
+    c.fillStyle   = 'rgba(0,0,0,1)';
+  } else {
+    c.globalCompositeOperation = 'source-over';
+    c.strokeStyle = color;
+    c.fillStyle   = color;
+  }
+}
+
+function drawSeg(c, x0, y0, x1, y1, color, size, opacity, tool) {
+  applyStyle(c, color, size, opacity, tool);
+  c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+  c.restore();
+}
+
+function drawSoftBrush(c, x, y, size, color, opacity) {
+  const r = size / 2;
+  const grad = c.createRadialGradient(x, y, 0, x, y, r);
+  const [R,G,B] = hexToRgb(color);
+  grad.addColorStop(0,   `rgba(${R},${G},${B},${opacity})`);
+  grad.addColorStop(0.5, `rgba(${R},${G},${B},${opacity * 0.5})`);
+  grad.addColorStop(1,   `rgba(${R},${G},${B},0)`);
+  c.save(); c.globalCompositeOperation = 'source-over';
+  c.fillStyle = grad;
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+
+function drawStroke(c, stroke) {
+  if (!stroke) return;
+  const { strokeType: t } = stroke;
+
+  if (t === 'path') {
+    const pts = stroke.points;
+    if (!pts || pts.length === 0) return;
+    applyStyle(c, stroke.color, stroke.size, stroke.opacity, stroke.tool);
+    c.beginPath();
+    c.moveTo(pts[0].x, pts[0].y);
+    if (pts.length === 1) {
+      c.arc(pts[0].x, pts[0].y, stroke.size / 2, 0, Math.PI * 2);
+      c.fill();
+    } else {
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i+1].x) / 2;
+        const my = (pts[i].y + pts[i+1].y) / 2;
+        c.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      c.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+      c.stroke();
+    }
+    c.restore();
+    return;
+  }
+
+  if (t === 'fill') {
+    floodFill(c === ctx ? mainCanvas : overlayCanvas, c, Math.round(stroke.x), Math.round(stroke.y), stroke.color, stroke.tolerance || 30);
+    return;
+  }
+
+  if (t === 'shape') {
+    drawShape(c, stroke);
+    return;
+  }
+
+  if (t === 'image') {
+    const img = new Image();
+    img.onload = () => {
+      c.drawImage(img, stroke.x, stroke.y, stroke.w, stroke.h);
+    };
+    img.src = stroke.data;
+    return;
+  }
+
+  if (t === 'text') {
+    c.save();
+    c.globalAlpha  = stroke.opacity || 1;
+    c.fillStyle    = stroke.color;
+    c.font         = stroke.font;
+    c.textBaseline = 'top';
+    const lines = stroke.text.split('\n');
+    const lineH = parseInt(stroke.font) * 1.3 || 20;
+    lines.forEach((line, i) => c.fillText(line, stroke.x, stroke.y + i * lineH));
+    c.restore();
+    return;
+  }
+}
+
+// ── Shape drawing ─────────────────────────────────────────────────────────────
+function drawShape(c, s) {
+  c.save();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.lineWidth = s.size;
+  c.globalAlpha = s.opacity || 1;
+  c.globalCompositeOperation = 'source-over';
+  c.strokeStyle = s.color;
+  c.fillStyle   = s.fillColor || s.color;
+
+  if (s.shape === 'line') {
+    c.beginPath(); c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2); c.stroke();
+  } else if (s.shape === 'arrow') {
+    drawArrow(c, s.x1, s.y1, s.x2, s.y2, s.size);
+  } else if (s.shape === 'rect') {
+    const x = Math.min(s.x1,s.x2), y = Math.min(s.y1,s.y2);
+    const w = Math.abs(s.x2-s.x1), h = Math.abs(s.y2-s.y1);
+    if (s.filled) { c.fillRect(x,y,w,h); }
+    c.strokeRect(x,y,w,h);
+  } else if (s.shape === 'ellipse') {
+    const cx = (s.x1+s.x2)/2, cy = (s.y1+s.y2)/2;
+    const rx = Math.abs(s.x2-s.x1)/2, ry = Math.abs(s.y2-s.y1)/2;
+    c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+    if (s.filled) c.fill();
+    c.stroke();
+  }
+  c.restore();
+}
+
+function drawArrow(c, x1, y1, x2, y2, size) {
+  const angle  = Math.atan2(y2-y1, x2-x1);
+  const headLen = Math.max(size * 4, 12);
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  c.beginPath();
+  c.moveTo(x2, y2);
+  c.lineTo(x2 - headLen * Math.cos(angle - Math.PI/6), y2 - headLen * Math.sin(angle - Math.PI/6));
+  c.lineTo(x2 - headLen * Math.cos(angle + Math.PI/6), y2 - headLen * Math.sin(angle + Math.PI/6));
+  c.closePath(); c.fill();
+}
+
+// ── Flood Fill ────────────────────────────────────────────────────────────────
+function floodFill(canvasEl, drawCtx, sx, sy, fillHex, tol) {
+  if (sx < 0 || sx >= CANVAS_W || sy < 0 || sy >= CANVAS_H) return;
+  // Always read from mainCanvas
+  const imgData = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
+  const d = imgData.data;
+  const W = CANVAS_W;
+
+  const i0   = (sy * W + sx) * 4;
+  const [tr, tg, tb, ta] = [d[i0], d[i0+1], d[i0+2], d[i0+3]];
+  const [fr, fg, fb]     = hexToRgb(fillHex);
+
+  if (tr===fr && tg===fg && tb===fb && ta===255) return;
+
+  const match = i =>
+    Math.abs(d[i]-tr)<=tol && Math.abs(d[i+1]-tg)<=tol &&
+    Math.abs(d[i+2]-tb)<=tol && Math.abs(d[i+3]-ta)<=tol;
+
+  const visited = new Uint8Array(W * CANVAS_H);
+
+  // Scanline fill — much faster than BFS for large areas
+  const stack = [[sx, sy]];
+  while (stack.length) {
+    let [x, y] = stack.pop();
+    if (y < 0 || y >= CANVAS_H) continue;
+    // Walk left
+    let lx = x;
+    while (lx > 0 && match((y * W + lx - 1) * 4)) lx--;
+    let reachUp = false, reachDown = false;
+    while (lx < W) {
+      const idx = (y * W + lx) * 4;
+      if (!match(idx) || visited[y * W + lx]) break;
+      visited[y * W + lx] = 1;
+      d[idx] = fr; d[idx+1] = fg; d[idx+2] = fb; d[idx+3] = 255;
+      if (y > 0) {
+        const ui = ((y-1) * W + lx) * 4;
+        if (match(ui) && !visited[(y-1)*W+lx]) { if (!reachUp) { stack.push([lx,y-1]); reachUp=true; } }
+        else reachUp = false;
+      }
+      if (y < CANVAS_H - 1) {
+        const di = ((y+1) * W + lx) * 4;
+        if (match(di) && !visited[(y+1)*W+lx]) { if (!reachDown) { stack.push([lx,y+1]); reachDown=true; } }
+        else reachDown = false;
+      }
+      lx++;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// ── Tool Event Handlers ───────────────────────────────────────────────────────
 function onPointerDown(e) {
   e.preventDefault();
-  drawing = true;
-  const { x, y } = getPos(e);
-  lastX = x; lastY = y;
-  currentPoints = [{ x, y }];
-  // Draw a dot on press
-  drawSegment(ctx, x, y, x, y, myColor, brushSize, tool);
+  const pos = getCanvasPos(e);
+
+  // Spacebar panning
+  if (S.spaceDown || S.tool === 'hand') {
+    S.isPanning = true;
+    S.panStart  = { x: e.clientX - S.panX, y: e.clientY - S.panY };
+    overlayCanvas.style.cursor = 'grabbing';
+    return;
+  }
+
+  // Zoom tool
+  if (S.tool === 'zoom') {
+    const rect = viewport.getBoundingClientRect();
+    zoomAt(e.shiftKey ? -1 : 1, e.clientX - rect.left, e.clientY - rect.top);
+    return;
+  }
+
+  // Eyedropper
+  if (S.tool === 'eyedropper') {
+    pickColor(pos.x, pos.y);
+    return;
+  }
+
+  // Text
+  if (S.tool === 'text') {
+    commitText();
+    startText(pos.x, pos.y);
+    return;
+  }
+
+  // Fill
+  if (S.tool === 'fill') {
+    saveUndo();
+    floodFill(mainCanvas, ctx, Math.round(pos.x), Math.round(pos.y), S.color, S.tolerance);
+    sendStroke({ strokeType:'fill', x:pos.x, y:pos.y, color:S.color, tolerance:S.tolerance, size:1, opacity:1 });
+    return;
+  }
+
+  // Selection — check if clicking inside existing selection to move it
+  if (S.tool === 'select') {
+    if (S.selection && pointInSelection(pos.x, pos.y)) {
+      S.selDragStart = { mx: pos.x, my: pos.y, sx: S.selection.x, sy: S.selection.y };
+      return;
+    }
+    S.selection = null;
+    S.selectionData = null;
+    hideSelection();
+  }
+
+  S.isDrawing = true;
+  S.lastX = pos.x; S.lastY = pos.y;
+  S.currentPoints = [{ x: pos.x, y: pos.y }];
+  S.shapeStart = { x: pos.x, y: pos.y };
+
+  // Single dot
+  if (['pencil','eraser'].includes(S.tool)) {
+    drawSeg(ctx, pos.x, pos.y, pos.x, pos.y, S.color, S.brushSize, S.opacity, S.tool);
+  } else if (S.tool === 'brush') {
+    drawSoftBrush(ctx, pos.x, pos.y, S.brushSize, S.color, S.opacity);
+  }
+  saveUndo();
 }
 
 function onPointerMove(e) {
   e.preventDefault();
-  const { x, y } = getPos(e);
-  statusPos.textContent = `x=${Math.round(x)}, y=${Math.round(y)}`;
+  const pos = getCanvasPos(e);
+  sfPos.textContent = `x=${Math.round(pos.x)}, y=${Math.round(pos.y)}`;
 
-  if (!drawing) return;
-
-  drawSegment(ctx, lastX, lastY, x, y, myColor, brushSize, tool);
-  currentPoints.push({ x, y });
-
-  // Throttle segment broadcasts
-  if (!segmentThrottle) {
-    segmentThrottle = setTimeout(() => {
-      segmentThrottle = null;
-      sendSegment(lastX, lastY, x, y);
-    }, SEGMENT_INTERVAL);
+  // Panning
+  if (S.isPanning) {
+    S.panX = e.clientX - S.panStart.x;
+    S.panY = e.clientY - S.panStart.y;
+    updateTransform();
+    return;
   }
 
-  lastX = x; lastY = y;
+  // Selection drag (move)
+  if (S.selDragStart && S.tool === 'select') {
+    const dx = pos.x - S.selDragStart.mx;
+    const dy = pos.y - S.selDragStart.my;
+    S.selection.x = S.selDragStart.sx + dx;
+    S.selection.y = S.selDragStart.sy + dy;
+    updateSelectionDisplay();
+    return;
+  }
+
+  if (!S.isDrawing) return;
+
+  if (S.tool === 'pencil' || S.tool === 'eraser') {
+    drawSeg(ctx, S.lastX, S.lastY, pos.x, pos.y, S.color, S.brushSize, S.opacity, S.tool);
+    S.currentPoints.push({ x: pos.x, y: pos.y });
+    throttledSegment(S.lastX, S.lastY, pos.x, pos.y);
+    S.lastX = pos.x; S.lastY = pos.y;
+  } else if (S.tool === 'brush') {
+    const dx = pos.x - S.lastX, dy = pos.y - S.lastY;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const step = Math.max(S.brushSize * 0.2, 1);
+    for (let i = 0; i <= dist; i += step) {
+      const t = i / dist;
+      drawSoftBrush(ctx, S.lastX + dx*t, S.lastY + dy*t, S.brushSize, S.color, S.opacity * 0.3);
+    }
+    S.currentPoints.push({ x: pos.x, y: pos.y });
+    S.lastX = pos.x; S.lastY = pos.y;
+  } else if (['line','arrow','rect','ellipse'].includes(S.tool)) {
+    // Live preview on overlay
+    octx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    const shapeStroke = {
+      strokeType:'shape', shape: S.tool,
+      x1: S.shapeStart.x, y1: S.shapeStart.y, x2: pos.x, y2: pos.y,
+      color: S.color, size: S.brushSize, opacity: S.opacity,
+      filled: S.shapeFilled, fillColor: S.fillColor,
+    };
+    drawShape(octx, shapeStroke);
+  } else if (S.tool === 'select') {
+    // Draw selection rectangle on overlay
+    octx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    const x = Math.min(S.shapeStart.x, pos.x);
+    const y = Math.min(S.shapeStart.y, pos.y);
+    const w = Math.abs(pos.x - S.shapeStart.x);
+    const h = Math.abs(pos.y - S.shapeStart.y);
+    octx.save();
+    octx.strokeStyle='rgba(255,255,255,0.8)'; octx.lineWidth=1; octx.setLineDash([6,4]);
+    octx.strokeRect(x,y,w,h);
+    octx.strokeStyle='rgba(0,0,0,0.5)'; octx.lineDashOffset=6;
+    octx.strokeRect(x,y,w,h);
+    octx.restore();
+  }
 }
 
 function onPointerUp(e) {
-  if (!drawing) return;
-  drawing = false;
-  if (segmentThrottle) { clearTimeout(segmentThrottle); segmentThrottle = null; }
+  const pos = getCanvasPos(e);
 
-  // Send complete stroke for persistence
-  sendStroke(currentPoints);
-  currentPoints = [];
-}
-
-// Mouse
-canvas.addEventListener('mousedown',  onPointerDown);
-canvas.addEventListener('mousemove',  onPointerMove);
-canvas.addEventListener('mouseup',    onPointerUp);
-canvas.addEventListener('mouseleave', onPointerUp);
-
-// Touch
-canvas.addEventListener('touchstart',  onPointerDown, { passive: false });
-canvas.addEventListener('touchmove',   onPointerMove, { passive: false });
-canvas.addEventListener('touchend',    onPointerUp,   { passive: false });
-canvas.addEventListener('touchcancel', onPointerUp,   { passive: false });
-
-// ── WebSocket messaging ───────────────────────────────────────────────────
-function sendSegment(x0, y0, x1, y1) {
-  send({ type: 'segment', x0, y0, x1, y1, color: myColor, size: brushSize, tool });
-}
-function sendStroke(points) {
-  if (!points.length) return;
-  send({ type: 'stroke', points, color: myColor, size: brushSize, tool });
-}
-function sendClear() {
-  send({ type: 'clear' });
-}
-function send(obj) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(obj));
+  if (S.isPanning) {
+    S.isPanning = false;
+    setCursor();
+    return;
   }
+
+  if (S.selDragStart) {
+    // Commit selection move
+    if (S.selectionData) {
+      ctx.clearRect(S.selDragStart.sx, S.selDragStart.sy, S.selection.w, S.selection.h);
+      ctx.putImageData(S.selectionData, S.selection.x, S.selection.y);
+    }
+    S.selDragStart = null;
+    return;
+  }
+
+  if (!S.isDrawing) return;
+  S.isDrawing = false;
+
+  if (S.segTimer) { clearTimeout(S.segTimer); S.segTimer = null; }
+  octx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  if (S.tool === 'pencil' || S.tool === 'eraser') {
+    sendStroke({ strokeType:'path', points: S.currentPoints, color:S.color, size:S.brushSize, opacity:S.opacity, tool:S.tool });
+  } else if (S.tool === 'brush') {
+    sendStroke({ strokeType:'path', points: S.currentPoints, color:S.color, size:S.brushSize, opacity:S.opacity, tool:'pencil' });
+  } else if (['line','arrow','rect','ellipse'].includes(S.tool)) {
+    const st = {
+      strokeType:'shape', shape:S.tool,
+      x1:S.shapeStart.x, y1:S.shapeStart.y, x2:pos.x, y2:pos.y,
+      color:S.color, size:S.brushSize, opacity:S.opacity,
+      filled:S.shapeFilled, fillColor:S.fillColor,
+    };
+    drawShape(ctx, st);
+    sendStroke(st);
+  } else if (S.tool === 'select') {
+    const x = Math.min(S.shapeStart.x, pos.x);
+    const y = Math.min(S.shapeStart.y, pos.y);
+    const w = Math.abs(pos.x - S.shapeStart.x);
+    const h = Math.abs(pos.y - S.shapeStart.y);
+    if (w > 2 && h > 2) {
+      S.selection = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+      S.selectionData = ctx.getImageData(S.selection.x, S.selection.y, S.selection.w, S.selection.h);
+      updateSelectionDisplay();
+      document.getElementById('selSection').style.display = 'block';
+      selInfo.textContent = `${S.selection.w} × ${S.selection.h} px`;
+    }
+    return; // don't call saveUndo for selection
+  }
+  // Undo already saved on pointerDown for drawing tools
 }
 
-// ── WebSocket connection ──────────────────────────────────────────────────
+// ── Selection helpers ─────────────────────────────────────────────────────────
+function pointInSelection(x, y) {
+  if (!S.selection) return false;
+  return x >= S.selection.x && x <= S.selection.x + S.selection.w &&
+         y >= S.selection.y && y <= S.selection.y + S.selection.h;
+}
+
+function updateSelectionDisplay() {
+  if (!S.selection) { hideSelection(); return; }
+  const { x, y, w, h } = S.selection;
+  selSvg.style.display = 'block';
+  selRect.setAttribute('x', x); selRect.setAttribute('y', y);
+  selRect.setAttribute('width', w); selRect.setAttribute('height', h);
+  selRect2.setAttribute('x', x); selRect2.setAttribute('y', y);
+  selRect2.setAttribute('width', w); selRect2.setAttribute('height', h);
+}
+
+function hideSelection() {
+  selSvg.style.display = 'none';
+  S.selection = null;
+  S.selectionData = null;
+  document.getElementById('selSection').style.display = 'none';
+}
+
+// ── Text tool ─────────────────────────────────────────────────────────────────
+function startText(x, y) {
+  S.textActive = true;
+  textInputWrap.style.display = 'block';
+  const fontSize = Math.max(12, S.brushSize * 3);
+  textInputEl.style.color    = S.color;
+  textInputEl.style.fontSize = fontSize + 'px';
+  textInputEl.style.fontFamily = 'sans-serif';
+  textInputEl.style.minWidth   = '100px';
+  // Position in viewport space
+  textInputWrap.style.left = (x * S.zoom + S.panX) + 'px';
+  textInputWrap.style.top  = (y * S.zoom + S.panY) + 'px';
+  textInputWrap.style.transform = `scale(${S.zoom})`;
+  textInputWrap.style.transformOrigin = '0 0';
+  textInputEl.value = '';
+  textInputEl.focus();
+  // Store canvas position
+  textInputWrap._cx = x; textInputWrap._cy = y;
+  textInputWrap._fontSize = fontSize;
+}
+
+function commitText() {
+  if (!S.textActive) return;
+  S.textActive = false;
+  const text = textInputEl.value.trim();
+  if (text) {
+    const x = textInputWrap._cx, y = textInputWrap._cy;
+    const fontSize = textInputWrap._fontSize;
+    const font = `${fontSize}px sans-serif`;
+    saveUndo();
+    const st = { strokeType:'text', x, y, text, font, color:S.color, opacity:S.opacity, size:fontSize };
+    drawStroke(ctx, st);
+    sendStroke(st);
+  }
+  textInputWrap.style.display = 'none';
+  textInputEl.value = '';
+}
+
+// ── Eyedropper ────────────────────────────────────────────────────────────────
+function pickColor(x, y) {
+  x = Math.round(x); y = Math.round(y);
+  if (x < 0 || x >= CANVAS_W || y < 0 || y >= CANVAS_H) return;
+  const d = ctx.getImageData(x, y, 1, 1).data;
+  const hex = rgbToHex(d[0], d[1], d[2]);
+  setColor(hex);
+  showToast(`Picked ${hex}`);
+}
+
+// ── Image upload ──────────────────────────────────────────────────────────────
+function handleImageFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const MAX = 1200;
+      if (w > MAX || h > MAX) {
+        const sc = MAX / Math.max(w, h);
+        w = Math.round(w * sc); h = Math.round(h * sc);
+      }
+      const x = Math.round((CANVAS_W - w) / 2);
+      const y = Math.round((CANVAS_H - h) / 2);
+      saveUndo();
+      ctx.drawImage(img, x, y, w, h);
+
+      // Encode smaller version for sync
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      tmp.getContext('2d').drawImage(img, 0, 0, w, h);
+      const data = tmp.toDataURL('image/jpeg', 0.75);
+      sendStroke({ strokeType:'image', x, y, w, h, data, color:'#000', size:1, opacity:1 });
+      showToast('Image added to canvas');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Throttled segment ─────────────────────────────────────────────────────────
+function throttledSegment(x0, y0, x1, y1) {
+  if (S.segTimer) return;
+  S.segTimer = setTimeout(() => {
+    S.segTimer = null;
+    sendSegment(x0, y0, x1, y1);
+  }, 14);
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
 function connect(rid, mode, tempMinutes) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
 
   ws.addEventListener('open', () => {
-    connDot.classList.remove('off');
-    statusInfo.textContent = 'Connected';
-    ws.send(JSON.stringify({ type: 'join', roomId: rid, mode, tempMinutes }));
+    document.getElementById('connDot').classList.add('on');
+    sfInfo.textContent = 'Connected';
+    ws.send(JSON.stringify({ type:'join', roomId:rid, mode, tempMinutes }));
   });
-
   ws.addEventListener('message', ({ data }) => {
-    let msg;
-    try { msg = JSON.parse(data); } catch { return; }
-    handleMessage(msg);
+    try { handleMsg(JSON.parse(data)); } catch {}
   });
-
   ws.addEventListener('close', () => {
-    connDot.classList.add('off');
-    statusInfo.textContent = 'Disconnected — reconnecting…';
-    setTimeout(() => connect(roomId, mode, tempMinutes), 2000);
-  });
-
-  ws.addEventListener('error', () => {
-    // close event will fire and trigger reconnect
+    document.getElementById('connDot').classList.remove('on');
+    sfInfo.textContent = 'Reconnecting…';
+    setTimeout(() => connect(roomId, mode, tempMinutes), 2500);
   });
 }
 
-function handleMessage(msg) {
-  switch (msg.type) {
-
-    case 'init': {
-      roomId = msg.roomId;
-      roomCodeEl.textContent = msg.roomId;
-      // Update URL without reload
+function handleMsg(m) {
+  switch (m.type) {
+    case 'init':
+      roomId = m.roomId;
+      document.getElementById('roomCode').textContent = m.roomId;
       const url = new URL(location.href);
-      url.searchParams.set('room', msg.roomId);
+      url.searchParams.set('room', m.roomId);
       history.replaceState({}, '', url);
-      // Badge
-      if (msg.mode === 'perm') {
-        modeBadge.textContent = 'PERMANENT';
-        modeBadge.className = 'badge badge-perm';
-      } else {
-        modeBadge.textContent = `TEMP ${msg.tempMinutes}min`;
-        modeBadge.className = 'badge badge-temp';
-      }
-      // Replay all stored strokes
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      (msg.strokes || []).forEach(s => drawFullStroke(ctx, s));
-      updateUserCount(msg.userCount);
-      statusInfo.textContent = `Joined room ${msg.roomId}`;
+      const mb = document.getElementById('modeBadge');
+      if (m.mode === 'perm') { mb.textContent='PERMANENT'; mb.className='modeBadge badge-perm'; }
+      else { mb.textContent=`TEMP ${m.tempMin}m`; mb.className='modeBadge badge-temp'; }
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+      (m.strokes||[]).forEach(s => drawStroke(ctx, s));
+      document.getElementById('userCount').textContent = m.userCount + (m.userCount===1?' user':' users');
+      sfInfo.textContent = `Room: ${m.roomId}`;
       break;
-    }
-
-    case 'segment': {
-      // Another user is actively drawing — render their segment live
-      drawSegment(ctx, msg.x0, msg.y0, msg.x1, msg.y1, msg.color, msg.size, msg.tool);
+    case 'segment':
+      drawSeg(ctx, m.x0, m.y0, m.x1, m.y1, m.color, m.size, m.opacity||1, m.tool);
       break;
-    }
-
-    case 'stroke': {
-      // Another user finished a stroke — draw it cleanly
-      drawFullStroke(ctx, msg.stroke);
+    case 'stroke':
+      drawStroke(ctx, m.stroke);
       break;
-    }
-
-    case 'clear': {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (msg.reason === 'timer') {
-        showToast('⏰ Board auto-cleared (time limit reached)');
-      } else {
-        showToast('🗑️ Board cleared');
-      }
+    case 'clear':
+      ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+      showToast(m.reason==='timer' ? '⏰ Board auto-cleared' : '🗑 Board cleared');
       break;
-    }
-
-    case 'userCount': {
-      updateUserCount(msg.count);
+    case 'userCount':
+      document.getElementById('userCount').textContent = m.count + (m.count===1?' user':' users');
       break;
-    }
   }
 }
 
-function updateUserCount(n) {
-  userCount.textContent = n + (n === 1 ? ' user' : ' users');
+function send(obj) { if (ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
+function sendSegment(x0,y0,x1,y1) { send({type:'segment',x0,y0,x1,y1,color:S.color,size:S.brushSize,opacity:S.opacity,tool:S.tool}); }
+function sendStroke(stroke) { send({type:'stroke',...stroke}); }
+
+// ── Color helpers ─────────────────────────────────────────────────────────────
+function hexToRgb(hex) {
+  hex = hex.replace('#','');
+  if (hex.length===3) hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  const n = parseInt(hex,16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function rgbToHex(r,g,b) { return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function setColor(c) {
+  S.color = c;
+  fgSwatch.style.background = c;
+  hexInput.value = c;
+}
+function setFillColor(c) {
+  S.fillColor = c;
+  fillSwatch.style.background = c;
 }
 
-// ── Room setup ────────────────────────────────────────────────────────────
-const setupModal = document.getElementById('setupModal');
-const appShell   = document.getElementById('appShell');
-const roomInput  = document.getElementById('roomInput');
-const modeSelect = document.getElementById('modeSelect');
-const ttlRow     = document.getElementById('ttlRow');
-const ttlInput   = document.getElementById('ttlInput');
-
-// Pre-fill room code from URL
-const urlRoom = new URLSearchParams(location.search).get('room');
-if (urlRoom) roomInput.value = urlRoom;
-
-modeSelect.addEventListener('change', () => {
-  ttlRow.style.display = modeSelect.value === 'temp' ? 'flex' : 'none';
-});
-
-document.getElementById('joinBtn').addEventListener('click', startSession);
-document.getElementById('roomInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') startSession();
-});
-
-function startSession() {
-  const rid  = roomInput.value.trim() || '';
-  const mode = modeSelect.value;
-  const ttl  = parseInt(ttlInput.value) || 30;
-
-  setupModal.style.display = 'none';
-  appShell.style.display = 'flex';
-
-  // Size canvas to fit after app is visible
-  resizeCanvas();
-  buildPalette();
-
-  connect(rid, mode, ttl);
+// ── Cursor ────────────────────────────────────────────────────────────────────
+function setCursor() {
+  const cursors = {
+    pencil:'crosshair', brush:'crosshair', eraser:'cell',
+    fill:'crosshair', select:'crosshair', move:'move',
+    line:'crosshair', arrow:'crosshair', rect:'crosshair', ellipse:'crosshair',
+    text:'text', eyedropper:'crosshair', hand:'grab', zoom:'zoom-in',
+  };
+  overlayCanvas.style.cursor = cursors[S.tool] || 'crosshair';
 }
 
-// ── Room code: click to copy share link ──────────────────────────────────
-roomCodeEl.addEventListener('click', () => {
-  const url = new URL(location.href);
-  url.searchParams.set('room', roomId || '');
-  navigator.clipboard.writeText(url.toString()).then(() => {
-    showToast('📋 Share link copied to clipboard!');
-  }).catch(() => {
-    prompt('Share this link:', url.toString());
+// ── Tool switch ───────────────────────────────────────────────────────────────
+function setTool(t) {
+  commitText();
+  S.tool = t;
+  document.querySelectorAll('.toolBtn').forEach(b => b.classList.toggle('active', b.dataset.tool===t));
+  sfTool.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+  setCursor();
+  // Show/hide panel sections
+  document.getElementById('toleranceRow').style.display = t==='fill' ? 'flex' : 'none';
+  document.getElementById('hardnessRow').style.display  = t==='brush' ? 'flex' : 'none';
+  document.getElementById('shapeOpts').style.display    = ['line','arrow','rect','ellipse'].includes(t) ? 'block' : 'none';
+  if (t !== 'select') { hideSelection(); }
+  overlayCanvas.classList.toggle('interactive', !['text','hand'].includes(t));
+}
+
+// ── UI Init ───────────────────────────────────────────────────────────────────
+function buildSwatches() {
+  const grid = document.getElementById('swatchGrid');
+  PALETTES.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'sw'; el.style.background = c; el.title = c;
+    el.addEventListener('click', () => setColor(c));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); setColor(c); });
+    grid.appendChild(el);
   });
-});
+}
 
-// ── Keyboard shortcuts ────────────────────────────────────────────────────
-window.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  if (e.key === 'p' || e.key === 'P') setTool('pencil');
-  if (e.key === 'e' || e.key === 'E') setTool('eraser');
-  if (e.key === '[') setSize(Math.max(1, brushSize - 2));
-  if (e.key === ']') setSize(Math.min(100, brushSize + 2));
-});
-
-// ── Toast ─────────────────────────────────────────────────────────────────
-function showToast(msg) {
+function showToast(msg, dur=2000) {
   toast.textContent = msg;
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2800);
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), dur);
 }
 
-// ── Foreground swatch: click to open color picker ─────────────────────────
-fgSwatch.addEventListener('click', () => {
-  document.getElementById('colorInput').value = myColor;
-  document.getElementById('colorInput').click();
+// ── Tooltip system (fixed position, always on top) ────────────────────────────
+document.querySelectorAll('[data-tip]').forEach(el => {
+  el.addEventListener('mouseenter', e => {
+    tooltip.textContent = e.currentTarget.dataset.tip;
+    tooltip.style.display = 'block';
+    moveTooltip(e);
+  });
+  el.addEventListener('mousemove', moveTooltip);
+  el.addEventListener('mouseleave', () => tooltip.style.display = 'none');
 });
+function moveTooltip(e) {
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY + 14) + 'px';
+}
+
+// ── Event wiring ──────────────────────────────────────────────────────────────
+function wireEvents() {
+  // Canvas pointer events (overlay receives them)
+  overlayCanvas.classList.add('interactive');
+  const oc = overlayCanvas;
+  oc.addEventListener('mousedown',  onPointerDown);
+  oc.addEventListener('mousemove',  onPointerMove);
+  oc.addEventListener('mouseup',    onPointerUp);
+  oc.addEventListener('mouseleave', onPointerUp);
+  oc.addEventListener('touchstart', e => { e.preventDefault(); onPointerDown(e); }, {passive:false});
+  oc.addEventListener('touchmove',  e => { e.preventDefault(); onPointerMove(e); }, {passive:false});
+  oc.addEventListener('touchend',   e => { e.preventDefault(); onPointerUp(e);   }, {passive:false});
+
+  // Wheel = zoom
+  viewport.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    zoomAt(e.deltaY < 0 ? 1 : -1, e.clientX - rect.left, e.clientY - rect.top);
+  }, {passive:false});
+
+  // Middle mouse button pan
+  viewport.addEventListener('mousedown', e => {
+    if (e.button === 1) {
+      e.preventDefault();
+      S.isPanning = true;
+      S.panStart = { x: e.clientX - S.panX, y: e.clientY - S.panY };
+    }
+  });
+  window.addEventListener('mousemove', e => {
+    if (S.isPanning && !S.spaceDown) {
+      S.panX = e.clientX - S.panStart.x;
+      S.panY = e.clientY - S.panStart.y;
+      updateTransform();
+    }
+  });
+  window.addEventListener('mouseup', e => {
+    if (e.button === 1) { S.isPanning = false; }
+  });
+
+  // Keyboard
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key==='z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+      if (e.key==='y') { e.preventDefault(); redo(); }
+      if (e.key==='s') { e.preventDefault(); saveCanvas(); }
+      if (e.key==='a') { e.preventDefault(); selectAll(); }
+      return;
+    }
+
+    const t = SHORTCUTS[e.key.toLowerCase()];
+    if (t) setTool(t);
+
+    if (e.key === ' ') { e.preventDefault(); S.spaceDown=true; overlayCanvas.style.cursor='grab'; }
+    if (e.key === '[') setSize(Math.max(1, S.brushSize - 1));
+    if (e.key === ']') setSize(Math.min(200, S.brushSize + 1));
+    if (e.key === 'Delete'||e.key==='Backspace') {
+      if (S.selection) { saveUndo(); ctx.clearRect(S.selection.x,S.selection.y,S.selection.w,S.selection.h); hideSelection(); }
+    }
+    if (e.key==='Escape') { commitText(); hideSelection(); }
+  });
+
+  window.addEventListener('keyup', e => {
+    if (e.key===' ') { S.spaceDown=false; setCursor(); }
+  });
+
+  // Text input blur
+  textInputEl.addEventListener('blur', commitText);
+  textInputEl.addEventListener('keydown', e => {
+    if (e.key==='Escape') { S.textActive=false; textInputWrap.style.display='none'; e.stopPropagation(); }
+    e.stopPropagation();
+  });
+
+  // Tool buttons
+  document.querySelectorAll('.toolBtn[data-tool]').forEach(b => {
+    b.addEventListener('click', () => setTool(b.dataset.tool));
+  });
+
+  // Top bar
+  document.getElementById('undoTopBtn').addEventListener('click', undo);
+  document.getElementById('redoTopBtn').addEventListener('click', redo);
+  document.getElementById('clearBtn').addEventListener('click', () => { if(confirm('Clear board for everyone?')) { send({type:'clear'}); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H); } });
+  document.getElementById('zoomIn').addEventListener('click', () => { const r=viewport.getBoundingClientRect(); zoomAt(1,r.width/2,r.height/2); });
+  document.getElementById('zoomOut').addEventListener('click', () => { const r=viewport.getBoundingClientRect(); zoomAt(-1,r.width/2,r.height/2); });
+  document.getElementById('zoomFit').addEventListener('click', fitToScreen);
+
+  // Side panel
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('redoBtn').addEventListener('click', redo);
+  document.getElementById('clearSideBtn').addEventListener('click', () => { if(confirm('Clear board for everyone?')) { send({type:'clear'}); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H); } });
+  document.getElementById('saveBtn').addEventListener('click', saveCanvas);
+  document.getElementById('deleteSelBtn').addEventListener('click', () => { if(S.selection){saveUndo();ctx.clearRect(S.selection.x,S.selection.y,S.selection.w,S.selection.h);hideSelection();} });
+  document.getElementById('deselBtn').addEventListener('click', hideSelection);
+  document.getElementById('cropBtn').addEventListener('click', cropToSelection);
+  document.getElementById('copyBtn').addEventListener('click', copySelection);
+
+  // Upload
+  document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) handleImageFile(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  // Drag & drop
+  viewport.addEventListener('dragover', e => { e.preventDefault(); viewport.classList.add('dragover'); });
+  viewport.addEventListener('dragleave', () => viewport.classList.remove('dragover'));
+  viewport.addEventListener('drop', e => {
+    e.preventDefault(); viewport.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) handleImageFile(f);
+  });
+
+  // Color inputs
+  fgSwatch.addEventListener('click', () => { document.getElementById('colorInput').value=S.color; document.getElementById('colorInput').click(); });
+  bgSwatch.addEventListener('click', () => { document.getElementById('bgColorInput').click(); });
+  fillSwatch.addEventListener('click', () => { document.getElementById('fillColorInput').value=S.fillColor; document.getElementById('fillColorInput').click(); });
+  document.getElementById('colorInput').addEventListener('input', e => setColor(e.target.value));
+  document.getElementById('bgColorInput').addEventListener('input', e => { S.bgColor=e.target.value; bgSwatch.style.background=e.target.value; });
+  document.getElementById('fillColorInput').addEventListener('input', e => setFillColor(e.target.value));
+  hexInput.addEventListener('input', e => {
+    const v = e.target.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setColor(v);
+  });
+  hexInput.addEventListener('keydown', e => e.stopPropagation());
+
+  // Sliders
+  sizeSlider.addEventListener('input', e => setSize(e.target.value));
+  opacitySlider.addEventListener('input', e => {
+    S.opacity = e.target.value / 100;
+    opacityVal.textContent = e.target.value + '%';
+  });
+  hardSlider.addEventListener('input', e => {
+    S.hardness = e.target.value / 100;
+    hardVal.textContent = e.target.value + '%';
+  });
+  tolSlider.addEventListener('input', e => {
+    S.tolerance = parseInt(e.target.value);
+    tolVal.textContent = e.target.value;
+  });
+
+  // Shape options
+  const filledBtn = document.getElementById('filledBtn');
+  filledBtn.addEventListener('click', () => {
+    S.shapeFilled = !S.shapeFilled;
+    filledBtn.classList.toggle('on', S.shapeFilled);
+    document.getElementById('fillColorRow').style.display = S.shapeFilled ? 'flex' : 'none';
+  });
+
+  // Room pill copy
+  document.getElementById('roomPill').addEventListener('click', () => {
+    const url = new URL(location.href);
+    url.searchParams.set('room', roomId||'');
+    navigator.clipboard.writeText(url.toString()).then(() => showToast('📋 Share link copied!'));
+  });
+
+  // Resize
+  window.addEventListener('resize', () => {
+    // Don't resize the canvas (would lose content), just re-fit view
+    setTimeout(fitToScreen, 50);
+  });
+}
+
+function setSize(n) {
+  S.brushSize = Math.min(Math.max(parseInt(n), 1), 200);
+  sizeSlider.value = S.brushSize;
+  sizeVal.textContent = S.brushSize + 'px';
+}
+
+function selectAll() {
+  S.selection = { x:0, y:0, w:CANVAS_W, h:CANVAS_H };
+  S.selectionData = ctx.getImageData(0,0,CANVAS_W,CANVAS_H);
+  updateSelectionDisplay();
+  document.getElementById('selSection').style.display='block';
+  selInfo.textContent = `${CANVAS_W} × ${CANVAS_H} px`;
+  setTool('select');
+}
+
+function saveCanvas() {
+  const a = document.createElement('a');
+  a.download = `collaboard-${roomId||'canvas'}.png`;
+  a.href = mainCanvas.toDataURL('image/png');
+  a.click();
+  showToast('💾 Saved as PNG');
+}
+
+function cropToSelection() {
+  if (!S.selection) return;
+  const { x, y, w, h } = S.selection;
+  const tmp = document.createElement('canvas');
+  tmp.width=w; tmp.height=h;
+  tmp.getContext('2d').putImageData(ctx.getImageData(x,y,w,h), 0, 0);
+  saveUndo();
+  initCanvas(w, h);
+  ctx.drawImage(tmp, 0, 0);
+  hideSelection();
+  fitToScreen();
+  showToast(`Canvas cropped to ${w}×${h}`);
+}
+
+function copySelection() {
+  if (!S.selection) return;
+  const { x, y, w, h } = S.selection;
+  const tmp = document.createElement('canvas');
+  tmp.width=w; tmp.height=h;
+  tmp.getContext('2d').putImageData(ctx.getImageData(x,y,w,h), 0, 0);
+  tmp.toBlob(blob => {
+    navigator.clipboard.write([new ClipboardItem({'image/png': blob})]).then(() => showToast('Copied to clipboard')).catch(() => showToast('Copy failed (try another browser)'));
+  });
+}
+
+// ── Join modal ────────────────────────────────────────────────────────────────
+document.getElementById('modeSelect').addEventListener('change', e => {
+  document.getElementById('ttlRow').style.display = e.target.value==='temp' ? 'flex' : 'none';
+});
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) document.getElementById('roomInput').value = urlRoom;
+
+document.getElementById('joinBtn').addEventListener('click', startSession);
+document.getElementById('roomInput').addEventListener('keydown', e => { if(e.key==='Enter') startSession(); });
+
+function startSession() {
+  const rid     = document.getElementById('roomInput').value.trim();
+  const mode    = document.getElementById('modeSelect').value;
+  const ttl     = parseInt(document.getElementById('ttlInput').value) || 60;
+  const [cw,ch] = document.getElementById('sizeSelect').value.split(',').map(Number);
+
+  document.getElementById('joinModal').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  initCanvas(cw, ch);
+  buildSwatches();
+  wireEvents();
+  setColor('#000000');
+  bgSwatch.style.background = '#ffffff';
+  fillSwatch.style.background = S.fillColor;
+  setTool('pencil');
+
+  setTimeout(() => {
+    fitToScreen();
+    connect(rid, mode, ttl);
+  }, 50);
+}
 </script>
 </body>
 </html>
